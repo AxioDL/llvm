@@ -241,8 +241,13 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     Reserved.set(PPC::R13); // Small Data Area pointer register
   }
 
+  // reserve TOC and small data accordingly for Hanafuda link
+  if (TM.isHanafuda()) {
+    Reserved.set(PPC::R2);
+    Reserved.set(PPC::R13);
+  }
   // On PPC64, r13 is the thread pointer. Never allocate this register.
-  if (TM.isPPC64()) {
+  else if (TM.isPPC64()) {
     Reserved.set(PPC::R13);
 
     Reserved.set(PPC::X1);
@@ -253,6 +258,7 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 
     if (hasBasePointer(MF))
       Reserved.set(PPC::X30);
+
 
     // The 64-bit SVR4 ABI reserves r2 for the TOC pointer.
     if (Subtarget.isSVR4ABI()) {

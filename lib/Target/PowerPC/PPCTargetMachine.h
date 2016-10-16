@@ -56,6 +56,7 @@ public:
     const Triple &TT = getTargetTriple();
     return (TT.getArch() == Triple::ppc64 || TT.getArch() == Triple::ppc64le);
   };
+  constexpr bool isHanafuda() const { return true; }
 };
 
 /// PowerPC 32-bit target machine.

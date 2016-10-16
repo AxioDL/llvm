@@ -59,6 +59,8 @@ def Feature64BitRegs : SubtargetFeature<"64bitregs","Use64BitRegs", "true",
                               "Enable 64-bit registers usage for ppc32 [beta]">;
 def FeatureCRBits    : SubtargetFeature<"crbits", "UseCRBits", "true",
                               "Use condition-register bits individually">;
+def FeaturePaired    : SubtargetFeature<"paired", "HasPaired", "true",
+                                        "Enable Paired-Single instructions">;
 def FeatureAltivec   : SubtargetFeature<"altivec","HasAltivec", "true",
                                         "Enable Altivec instructions",
                                         [FeatureHardFloat]>;
@@ -299,11 +301,11 @@ def : Processor<"generic", G3Itineraries, [Directive32, FeatureHardFloat,
                                            FeatureMFTB]>;
 def : ProcessorModel<"440", PPC440Model, [Directive440, FeatureISEL,
                                           FeatureFRES, FeatureFRSQRTE,
-                                          FeatureICBT, FeatureBookE, 
+                                          FeatureICBT, FeatureBookE,
                                           FeatureMSYNC, FeatureMFTB]>;
 def : ProcessorModel<"450", PPC440Model, [Directive440, FeatureISEL,
                                           FeatureFRES, FeatureFRSQRTE,
-                                          FeatureICBT, FeatureBookE, 
+                                          FeatureICBT, FeatureBookE,
                                           FeatureMSYNC, FeatureMFTB]>;
 def : Processor<"601", G3Itineraries, [Directive601, FeatureHardFloat]>;
 def : Processor<"602", G3Itineraries, [Directive602, FeatureHardFloat,
@@ -329,6 +331,9 @@ def : Processor<"620", G3Itineraries, [Directive620,
 def : Processor<"750", G4Itineraries, [Directive750,
                                        FeatureFRES, FeatureFRSQRTE,
                                        FeatureMFTB]>;
+def : Processor<"750cl", G4Itineraries, [Directive750,
+                                        FeatureFRES, FeatureFRSQRTE,
+                                        FeatureSTFIWX, FeaturePaired]>;
 def : Processor<"g3", G3Itineraries, [Directive750,
                                       FeatureFRES, FeatureFRSQRTE,
                                       FeatureMFTB]>;
@@ -342,7 +347,7 @@ def : Processor<"7450", G4PlusItineraries, [Directive7400, FeatureAltivec,
                                             FeatureFRES, FeatureFRSQRTE,
                                             FeatureMFTB]>;
 def : Processor<"g4+", G4PlusItineraries, [Directive7400, FeatureAltivec,
-                                           FeatureFRES, FeatureFRSQRTE, 
+                                           FeatureFRES, FeatureFRSQRTE,
                                            FeatureMFTB]>;
 
 def : ProcessorModel<"970", G5Model,
@@ -359,11 +364,11 @@ def : ProcessorModel<"g5", G5Model,
                    FeatureMFTB, DeprecatedDST]>;
 def : ProcessorModel<"e500mc", PPCE500mcModel,
                   [DirectiveE500mc,
-                   FeatureSTFIWX, FeatureICBT, FeatureBookE, 
+                   FeatureSTFIWX, FeatureICBT, FeatureBookE,
                    FeatureISEL, FeatureMFTB]>;
 def : ProcessorModel<"e5500", PPCE5500Model,
                   [DirectiveE5500, FeatureMFOCRF, Feature64Bit,
-                   FeatureSTFIWX, FeatureICBT, FeatureBookE, 
+                   FeatureSTFIWX, FeatureICBT, FeatureBookE,
                    FeatureISEL, FeatureMFTB]>;
 def : ProcessorModel<"a2", PPCA2Model,
                   [DirectiveA2, FeatureICBT, FeatureBookE, FeatureMFOCRF,
