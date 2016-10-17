@@ -194,6 +194,7 @@ StringRef Triple::getOSTypeName(OSType Kind) {
   case NVCL: return "nvcl";
   case AMDHSA: return "amdhsa";
   case PS4: return "ps4";
+  case Hanafuda: return "hanafuda";
   case ELFIAMCU: return "elfiamcu";
   case TvOS: return "tvos";
   case WatchOS: return "watchos";
@@ -471,6 +472,7 @@ static Triple::OSType parseOS(StringRef OSName) {
     .StartsWith("nvcl", Triple::NVCL)
     .StartsWith("amdhsa", Triple::AMDHSA)
     .StartsWith("ps4", Triple::PS4)
+    .StartsWith("hanafuda", Triple::Hanafuda)
     .StartsWith("elfiamcu", Triple::ELFIAMCU)
     .StartsWith("tvos", Triple::TvOS)
     .StartsWith("watchos", Triple::WatchOS)
