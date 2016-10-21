@@ -318,6 +318,9 @@ def QBRC : RegisterClass<"PPC", [v4i1], 256, (add QFRC)> {
   let Size = 256;
 }
 
+// For Paired Singles
+def PSRC : RegisterClass<"PPC", [v2f32], 64, (add F8RC)>;
+
 def CRBITRC : RegisterClass<"PPC", [i1], 32,
   (add CR2LT, CR2GT, CR2EQ, CR2UN,
        CR3LT, CR3GT, CR3EQ, CR3UN,

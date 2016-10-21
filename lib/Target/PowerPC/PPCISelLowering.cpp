@@ -848,6 +848,18 @@ PPCTargetLowering::PPCTargetLowering(const PPCTargetMachine &TM,
     }
   }
 
+  if (Subtarget.hasPaired()) {
+    addRegisterClass(MVT::v2f32, &PPC::PSRCRegClass);
+
+    setOperationAction(ISD::FADD, MVT::v2f32, Legal);
+    setOperationAction(ISD::FSUB, MVT::v2f32, Legal);
+    setOperationAction(ISD::FMUL, MVT::v2f32, Legal);
+    setOperationAction(ISD::FDIV, MVT::v2f32, Legal);
+
+    setOperationAction(ISD::LOAD  , MVT::v2f32, Custom);
+    setOperationAction(ISD::STORE , MVT::v2f32, Custom);
+  }
+
   if (Subtarget.has64BitSupport())
     setOperationAction(ISD::PREFETCH, MVT::Other, Legal);
 
@@ -2690,7 +2702,7 @@ bool llvm::CC_PPC32_SVR4_Custom_AlignArgRegs(unsigned &ValNo, MVT &ValVT,
   return false;
 }
 
-bool 
+bool
 llvm::CC_PPC32_SVR4_Custom_SkipLastArgRegsPPCF128(unsigned &ValNo, MVT &ValVT,
                                                   MVT &LocVT,
                                                   CCValAssign::LocInfo &LocInfo,
@@ -2705,7 +2717,7 @@ llvm::CC_PPC32_SVR4_Custom_SkipLastArgRegsPPCF128(unsigned &ValNo, MVT &ValVT,
   unsigned RegNum = State.getFirstUnallocated(ArgRegs);
   int RegsLeft = NumArgRegs - RegNum;
 
-  // Skip if there is not enough registers left for long double type (4 gpr regs 
+  // Skip if there is not enough registers left for long double type (4 gpr regs
   // in soft float mode) and put long double argument on the stack.
   if (RegNum != NumArgRegs && RegsLeft < 4) {
     for (int i = 0; i < RegsLeft; i++) {
@@ -5098,9 +5110,9 @@ SDValue PPCTargetLowering::LowerCall_64SVR4(
             continue;
           break;
         case MVT::v4f32:
-          // When using QPX, this is handled like a FP register, otherwise, it
+          // When using QPX or Hanafuda, this is handled like a FP register, otherwise, it
           // is an Altivec register.
-          if (Subtarget.hasQPX()) {
+          if (Subtarget.hasQPX() || Subtarget.hasPaired()) {
             if (++NumFPRsUsed <= NumFPRs)
               continue;
           } else {
