@@ -356,6 +356,30 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
   M.materializeMetadata();
   UpgradeDebugInfo(M);
 
+  Optional<StringSet<llvm::MallocAllocator>> HanafudaNewSyms;
+  if (HanafudaPatches) {
+    HanafudaNewSyms.emplace();
+    NamedMDNode *patchesNode = M.getNamedMetadata("hanafuda.patches");
+    if (patchesNode && patchesNode->getNumOperands()) {
+      MDNode *tuple = patchesNode->getOperand(0);
+      for (unsigned i = 0; i < tuple->getNumOperands(); ++i) {
+        const MDNode *patch = llvm::dyn_cast<MDTuple>(tuple->getOperand(i));
+        if (patch && patch->getNumOperands() >= 2) {
+          const MDNode *NewNode = llvm::dyn_cast<MDNode>(patch->getOperand(0));
+          const MDNode *OldNode = llvm::dyn_cast<MDNode>(patch->getOperand(1));
+          if (NewNode && NewNode->getNumOperands() && OldNode && OldNode->getNumOperands()) {
+            const MDString *New = llvm::dyn_cast<MDString>(NewNode->getOperand(0));
+            const MDString *Old = llvm::dyn_cast<MDString>(OldNode->getOperand(0));
+            if (New && Old) {
+              (*HanafudaPatches)[Old->getString()] = New->getString();
+              HanafudaNewSyms->insert(New->getString());
+            }
+          }
+        }
+      }
+    }
+  }
+
   SmallPtrSet<GlobalValue *, 8> Used;
   collectUsedGlobalVariables(M, Used, /*CompilerUsed*/ false);
 
@@ -371,6 +395,15 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
                   InputFile::symbol_iterator(Obj->symbol_end(), nullptr))) {
     assert(ResI != Res.end());
     SymbolResolution Res = *ResI++;
+
+    // If symbol is used as a patch target, ensure it's visible to regular
+    // objects (i.e. won't be optimized out)
+    if (HanafudaPatches) {
+      StringRef name = Sym.getName();
+      if (HanafudaNewSyms->find(name) != HanafudaNewSyms->end())
+        Res.VisibleToRegularObj = 1;
+    }
+
     addSymbolToGlobalRes(Obj.get(), Used, Sym, Res, 0);
 
     GlobalValue *GV = Obj->getSymbolGV(Sym.I->getRawDataRefImpl());
@@ -402,26 +435,6 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
     // FIXME: use proposed local attribute for FinalDefinitionInLinkageUnit.
   }
   assert(ResI == Res.end());
-
-  if (HanafudaPatches) {
-    NamedMDNode *patchesNode = M.getNamedMetadata("hanafuda.patches");
-    if (patchesNode && patchesNode->getNumOperands()) {
-      MDNode *tuple = patchesNode->getOperand(0);
-      for (unsigned i = 0; i < tuple->getNumOperands(); ++i) {
-        const MDNode *patch = llvm::dyn_cast<MDTuple>(tuple->getOperand(i));
-        if (patch && patch->getNumOperands() >= 2) {
-          const MDNode *NewNode = llvm::dyn_cast<MDNode>(patch->getOperand(0));
-          const MDNode *OldNode = llvm::dyn_cast<MDNode>(patch->getOperand(1));
-          if (NewNode && NewNode->getNumOperands() && OldNode && OldNode->getNumOperands()) {
-            const MDString *New = llvm::dyn_cast<MDString>(NewNode->getOperand(0));
-            const MDString *Old = llvm::dyn_cast<MDString>(OldNode->getOperand(0));
-            if (New && Old)
-              (*HanafudaPatches)[Old->getString()] = New->getString();
-          }
-        }
-      }
-    }
-  }
 
   return RegularLTO.Mover->move(Obj->takeModule(), Keep,
                                 [](GlobalValue &, IRMover::ValueAdder) {},
