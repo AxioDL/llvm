@@ -1911,6 +1911,21 @@ bool PPCTargetLowering::SelectAddressRegImm(SDValue N, SDValue &Disp,
              Disp.getOpcode() == ISD::TargetConstantPool ||
              Disp.getOpcode() == ISD::TargetJumpTable);
       Base = N.getOperand(0);
+
+      // Apply EABI small data relocation if eligible
+      if (Subtarget.useEABISmallDataSections()) {
+        if (GlobalAddressSDNode *GSDN = dyn_cast<GlobalAddressSDNode>(Disp.getNode())) {
+          const GlobalValue *GV = GSDN->getGlobal();
+          const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV);
+          if (GVar && IsGlobalInSmallSection(GVar)) {
+            bool IsConstant = GVar->isConstant();
+            Base = DAG.getRegister(IsConstant ? PPC::R2 : PPC::R13, MVT::i32);
+            Disp = DAG.getTargetGlobalAddress(GV, SDLoc(GSDN), Disp.getValueType(), GSDN->getOffset(),
+                                              IsConstant ? PPCII::MO_SDA2_LO : PPCII::MO_SDA_LO);
+          }
+        }
+      }
+
       return true;  // [&g+r]
     }
   } else if (N.getOpcode() == ISD::OR) {
@@ -12114,6 +12129,17 @@ bool PPCTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
   }
 
   return false;
+}
+
+/// \brief Returns true if the EABI subtarget supports SDA allocation and
+/// the provided object is eligible to be allocated there
+bool PPCTargetLowering::IsGlobalInSmallSection(const GlobalObject *Obj) const {
+  if (!Subtarget.useEABISmallDataSections())
+    return false;
+  PPCEmbeddedTargetObjectFile *TLOF =
+      static_cast<PPCEmbeddedTargetObjectFile*>(getTargetMachine().getObjFileLowering());
+  assert(TLOF != nullptr && "shouldn't be null");
+  return TLOF->IsGlobalInSmallSectionImpl(Obj, getTargetMachine());
 }
 
 /// getOptimalMemOpType - Returns the target specific optimal type for load

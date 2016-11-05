@@ -53,7 +53,7 @@ namespace llvm {
   extern char &PPCVSXFMAMutateID;
 
   namespace PPCII {
-    
+
   /// Target Operand Flag enum.
   enum TOF {
     //===------------------------------------------------------------------===//
@@ -93,12 +93,14 @@ namespace llvm {
     MO_DTPREL_LO = 5 << 4,
     MO_TLSLD_LO = 6 << 4,
     MO_TOC_LO = 7 << 4,
+    MO_SDA_LO = 9 << 4,
+    MO_SDA2_LO = 10 << 4,
 
     // Symbol for VK_PPC_TLS fixup attached to an ADD instruction
     MO_TLS = 8 << 4
   };
   } // end namespace PPCII
-  
+
 } // end namespace llvm;
 
 #endif

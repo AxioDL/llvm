@@ -43,6 +43,8 @@ public:
 
   const PPCSubtarget *getSubtargetImpl(const Function &F) const override;
 
+  const PPCSubtarget *getSubtargetImpl() const { return &Subtarget; }
+
   // Pass Pipeline Configuration
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 

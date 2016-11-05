@@ -603,6 +603,8 @@ public:
     return getArch() == Triple::nvptx || getArch() == Triple::nvptx64;
   }
 
+  bool isEmbeddedEnvironment() const { return getEnvironment() == Triple::EABI; }
+
   /// Tests wether the target supports comdat
   bool supportsCOMDAT() const { return !isOSBinFormatMachO(); }
 

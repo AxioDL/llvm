@@ -22,7 +22,7 @@ using namespace llvm;
 
 static cl::opt<unsigned>
 SSThreshold("mips-ssection-threshold", cl::Hidden,
-            cl::desc("Small data and bss section threshold size (default=8)"),
+            cl::desc("MIPS: Small data and bss section threshold size (default=8)"),
             cl::init(8));
 
 static cl::opt<bool>

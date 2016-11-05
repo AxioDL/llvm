@@ -134,6 +134,7 @@ protected:
   bool HasFloat128;
   bool IsISA3_0;
   bool UseLongCalls;
+  bool UseEABISmallDataSections;
 
   POPCNTDKind HasPOPCNTD;
 
@@ -279,6 +280,7 @@ public:
   bool hasFloat128() const { return HasFloat128; }
   bool isISA3_0() const { return IsISA3_0; }
   bool useLongCalls() const { return UseLongCalls; }
+  bool useEABISmallDataSections() const { return UseEABISmallDataSections; }
   bool needsSwapsForVSXMemOps() const {
     return hasVSX() && isLittleEndian() && !hasP9Vector();
   }
@@ -295,6 +297,8 @@ public:
   bool isTargetELF() const { return TargetTriple.isOSBinFormatELF(); }
   bool isTargetMachO() const { return TargetTriple.isOSBinFormatMachO(); }
   bool isTargetLinux() const { return TargetTriple.isOSLinux(); }
+  bool isTargetEABI() const { return TargetTriple.getEnvironment() == Triple::EABI; }
+  bool isTargetHanafuda() const { return TargetTriple.getOS() == Triple::Hanafuda; }
 
   bool isDarwinABI() const { return isTargetMachO() || isDarwin(); }
   bool isSVR4ABI() const { return !isDarwinABI(); }

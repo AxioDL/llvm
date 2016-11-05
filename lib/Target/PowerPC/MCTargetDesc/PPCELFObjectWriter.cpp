@@ -296,6 +296,10 @@ unsigned PPCELFObjectWriter::getRelocType(MCContext &Ctx, const MCValue &Target,
       case MCSymbolRefExpr::VK_PPC_GOT_DTPREL_HA:
         Type = ELF::R_PPC64_GOT_DTPREL16_HA;
         break;
+      case MCSymbolRefExpr::VK_PPC_SDA_LO:
+      case MCSymbolRefExpr::VK_PPC_SDA2_LO:
+        Type = ELF::R_PPC_EMB_SDA21;
+        break;
       }
       break;
     case PPC::fixup_ppc_half16ds:

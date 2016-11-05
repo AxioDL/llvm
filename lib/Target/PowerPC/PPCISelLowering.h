@@ -431,7 +431,7 @@ namespace llvm {
     /// a VMRGEW or VMRGOW instruction
     bool isVMRGEOShuffleMask(ShuffleVectorSDNode *N, bool CheckEven,
                              unsigned ShuffleKind, SelectionDAG &DAG);
-  
+
     /// isVSLDOIShuffleMask - If this is a vsldoi shuffle mask, return the
     /// shift amount, otherwise return -1.
     int isVSLDOIShuffleMask(SDNode *N, unsigned ShuffleKind,
@@ -699,6 +699,10 @@ namespace llvm {
     bool getTgtMemIntrinsic(IntrinsicInfo &Info,
                             const CallInst &I,
                             unsigned Intrinsic) const override;
+
+    /// \brief Returns true if the EABI subtarget supports SDA allocation and
+    /// the provided object is eligible to be allocated there
+    bool IsGlobalInSmallSection(const GlobalObject *Obj) const;
 
     /// getOptimalMemOpType - Returns the target specific optimal type for load
     /// and store operations as a result of memset, memcpy, and memmove
@@ -994,7 +998,7 @@ namespace llvm {
                                          ISD::ArgFlagsTy &ArgFlags,
                                          CCState &State);
 
-  bool 
+  bool
   CC_PPC32_SVR4_Custom_SkipLastArgRegsPPCF128(unsigned &ValNo, MVT &ValVT,
                                                  MVT &LocVT,
                                                  CCValAssign::LocInfo &LocInfo,
