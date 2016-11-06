@@ -54,24 +54,15 @@ bool LanaiTargetObjectFile::isGlobalInSmallSection(
   // section kind using getKindForGlobal() is only allowed for global
   // definitions.
   if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
-    return isGlobalInSmallSectionImpl(GO, TM);
+    return isGlobalInSmallSectionKind(GO, TM);
 
-  return isGlobalInSmallSection(GO, TM, getKindForGlobal(GO, TM));
+  return getKindForGlobal(GO, TM).isSmallSection();
 }
 
 // Return true if this global address should be placed into small data/bss
-// section.
-bool LanaiTargetObjectFile::isGlobalInSmallSection(const GlobalObject *GO,
-                                                   const TargetMachine &TM,
-                                                   SectionKind Kind) const {
-  return (isGlobalInSmallSectionImpl(GO, TM) &&
-          (Kind.isData() || Kind.isBSS() || Kind.isCommon()));
-}
-
-// Return true if this global address should be placed into small data/bss
-// section. This method does all the work, except for checking the section
+// section. This method does all the work, directly influencing section
 // kind.
-bool LanaiTargetObjectFile::isGlobalInSmallSectionImpl(
+bool LanaiTargetObjectFile::isGlobalInSmallSectionKind(
     const GlobalObject *GO, const TargetMachine & /*TM*/) const {
   // Only global variables, not functions.
   const auto *GVA = dyn_cast<GlobalVariable>(GO);
@@ -93,9 +84,9 @@ bool LanaiTargetObjectFile::isGlobalInSmallSectionImpl(
 MCSection *LanaiTargetObjectFile::SelectSectionForGlobal(
     const GlobalObject *GO, SectionKind Kind, const TargetMachine &TM) const {
   // Handle Small Section classification here.
-  if (Kind.isBSS() && isGlobalInSmallSection(GO, TM, Kind))
+  if (Kind.isSmallBSS())
     return SmallBSSSection;
-  if (Kind.isData() && isGlobalInSmallSection(GO, TM, Kind))
+  if (Kind.isSmallSection())
     return SmallDataSection;
 
   // Otherwise, we work the same as ELF.

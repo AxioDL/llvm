@@ -32,27 +32,19 @@ namespace llvm {
   /// PPCEmbeddedTargetObjectFile - This implementation is used for
   /// 32-bit PPC-EABI.
   class PPCEmbeddedTargetObjectFile : public TargetLoweringObjectFileELF {
-    friend class PPCTargetLowering;
     MCSection *SmallDataSection = nullptr;
     MCSection *SmallData2Section = nullptr;
     MCSection *SmallBssSection = nullptr;
-    MCSection *SmallBss2Section = nullptr;
 
-    bool IsGlobalInSmallSectionImpl(const GlobalObject *GO,
-                                    const TargetMachine &TM) const;
+    bool isGlobalInSmallSectionKind(const GlobalObject *GO,
+                                    const TargetMachine &TM) const override;
 
-    bool IsGlobalInSmallSection(const GlobalObject *GO,
-                                const TargetMachine &TM) const;
-    bool IsGlobalInSmallSection(const GlobalObject *GO,
-                                const TargetMachine &TM, SectionKind Kind) const;
+  public:
 
     void Initialize(MCContext &Ctx, const TargetMachine &TM) override;
 
     MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
                                       const TargetMachine &TM) const override;
-
-    /// \brief Describe a TLS variable address within debug info.
-    const MCExpr *getDebugThreadLocalSymbol(const MCSymbol *Sym) const override;
   };
 
 }  // end namespace llvm

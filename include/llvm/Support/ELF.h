@@ -805,7 +805,6 @@ enum : unsigned {
 
   // Section must be part of global data area.
   SHF_MIPS_GPREL   = 0x10000000,
-  SHF_PPC_SMALLREL = SHF_MIPS_GPREL,
 
   // This section should be merged.
   SHF_MIPS_MERGE   = 0x20000000,

@@ -190,6 +190,10 @@ protected:
   virtual MCSection *SelectSectionForGlobal(const GlobalObject *GO,
                                             SectionKind Kind,
                                             const TargetMachine &TM) const = 0;
+  virtual bool isGlobalInSmallSectionKind(const GlobalObject *GO,
+                                          const TargetMachine &TM) const {
+      return false;
+  }
 };
 
 } // end namespace llvm

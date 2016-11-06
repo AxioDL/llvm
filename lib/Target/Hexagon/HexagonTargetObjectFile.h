@@ -26,8 +26,8 @@ namespace llvm {
                                         SectionKind Kind,
                                         const TargetMachine &TM) const override;
 
-    bool isGlobalInSmallSection(const GlobalObject *GO,
-                                const TargetMachine &TM) const;
+    bool isGlobalInSmallSectionKind(const GlobalObject *GO,
+                                    const TargetMachine &TM) const override;
 
     bool isSmallDataEnabled() const;
 

@@ -86,10 +86,10 @@ static bool IsNullTerminatedString(const Constant *C) {
   if (const ConstantDataSequential *CDS = dyn_cast<ConstantDataSequential>(C)) {
     unsigned NumElts = CDS->getNumElements();
     assert(NumElts != 0 && "Can't have an empty CDS");
-    
+
     if (CDS->getElementAsInteger(NumElts-1) != 0)
       return false; // Not null terminated.
-    
+
     // Verify that the null doesn't occur anywhere else in the string.
     for (unsigned i = 0; i != NumElts-1; ++i)
       if (CDS->getElementAsInteger(i) == 0)
@@ -133,7 +133,7 @@ void TargetLoweringObjectFile::emitPersonalityValue(MCStreamer &Streamer,
 /// implementations simpler.  The target implementation is free to ignore this
 /// extra info of course.
 SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
-                                                       const TargetMachine &TM){
+                                                       const TargetMachine &TM) {
   assert(!GO->isDeclaration() && !GO->hasAvailableExternallyLinkage() &&
          "Can only be used for global definitions");
 
@@ -151,17 +151,46 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
     return SectionKind::getThreadData();
   }
 
+  // Provide object-file-dependent decision for data sections
+  // when the global should be allocated in the small section
+  const TargetLoweringObjectFile *TLOF = TM.getObjFileLowering();
+  auto GetData = [=,&TM]() -> SectionKind {
+    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
+      return SectionKind::getData();
+    return SectionKind::getSmallData();
+  };
+  auto GetReadOnly = [=,&TM]() -> SectionKind {
+    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
+      return SectionKind::getReadOnly();
+    return SectionKind::getSmallReadOnly();
+  };
+  auto GetBSS = [=,&TM](SectionKind OrigBSS) -> SectionKind {
+    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
+      return OrigBSS;
+    return SectionKind::getSmallBSS();
+  };
+  auto GetCommon = [=,&TM]() -> SectionKind {
+    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
+      return SectionKind::getCommon();
+    return SectionKind::getSmallCommon();
+  };
+  auto GetMergeableConst = [=,&TM](SectionKind OrigMerge) -> SectionKind {
+    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
+      return OrigMerge;
+    return SectionKind::getSmallReadOnly();
+  };
+
   // Variables with common linkage always get classified as common.
   if (GVar->hasCommonLinkage())
-    return SectionKind::getCommon();
+    return GetCommon();
 
   // Variable can be easily put to BSS section.
   if (isSuitableForBSS(GVar, TM.Options.NoZerosInBSS)) {
     if (GVar->hasLocalLinkage())
-      return SectionKind::getBSSLocal();
+      return GetBSS(SectionKind::getBSSLocal());
     else if (GVar->hasExternalLinkage())
-      return SectionKind::getBSSExtern();
-    return SectionKind::getBSS();
+      return GetBSS(SectionKind::getBSSExtern());
+    return GetBSS(SectionKind::getBSS());
   }
 
   const Constant *C = GVar->getInitializer();
@@ -177,7 +206,7 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
       // into a mergable section: just drop it into the general read-only
       // section instead.
       if (!GVar->hasGlobalUnnamedAddr())
-        return SectionKind::getReadOnly();
+        return GetReadOnly();
 
       // If initializer is a null-terminated string, put it in a "cstring"
       // section of the right width.
@@ -203,12 +232,12 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
       // mergable section.
       switch (
           GVar->getParent()->getDataLayout().getTypeAllocSize(C->getType())) {
-      case 4:  return SectionKind::getMergeableConst4();
-      case 8:  return SectionKind::getMergeableConst8();
-      case 16: return SectionKind::getMergeableConst16();
-      case 32: return SectionKind::getMergeableConst32();
+      case 4:  return GetMergeableConst(SectionKind::getMergeableConst4());
+      case 8:  return GetMergeableConst(SectionKind::getMergeableConst8());
+      case 16: return GetMergeableConst(SectionKind::getMergeableConst16());
+      case 32: return GetMergeableConst(SectionKind::getMergeableConst32());
       default:
-        return SectionKind::getReadOnly();
+        return GetReadOnly();
       }
 
     } else {
@@ -219,7 +248,7 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
       // consideration when it tries to merge entries in the section.
       if (ReloModel == Reloc::Static || ReloModel == Reloc::ROPI ||
           ReloModel == Reloc::RWPI || ReloModel == Reloc::ROPI_RWPI)
-        return SectionKind::getReadOnly();
+        return GetReadOnly();
 
       // Otherwise, the dynamic linker needs to fix it up, put it in the
       // writable data.rel section.
@@ -228,7 +257,7 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
   }
 
   // Okay, this isn't a constant.
-  return SectionKind::getData();
+  return GetData();
 }
 
 /// This method computes the appropriate section to emit the specified global

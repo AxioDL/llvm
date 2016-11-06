@@ -250,8 +250,7 @@ public:
     VK_PPC_GOT_TLSLD_HA,   // symbol@got@tlsld@ha
     VK_PPC_TLSLD,          // symbol@tlsld
     VK_PPC_LOCAL,          // symbol@local
-    VK_PPC_SDA_LO,         // symbol@sda@l
-    VK_PPC_SDA2_LO,        // symbol@sda2@l
+    VK_PPC_SDA,            // symbol@sdarx
 
     VK_COFF_IMGREL32, // symbol@imgrel (image-relative)
 

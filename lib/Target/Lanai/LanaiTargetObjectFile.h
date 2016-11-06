@@ -18,10 +18,8 @@ class LanaiTargetObjectFile : public TargetLoweringObjectFileELF {
   MCSection *SmallDataSection;
   MCSection *SmallBSSSection;
 
-  bool isGlobalInSmallSection(const GlobalObject *GO, const TargetMachine &TM,
-                              SectionKind Kind) const;
-  bool isGlobalInSmallSectionImpl(const GlobalObject *GO,
-                                  const TargetMachine &TM) const;
+  bool isGlobalInSmallSectionKind(const GlobalObject *GO,
+                                  const TargetMachine &TM) const override;
 
 public:
   void Initialize(MCContext &Ctx, const TargetMachine &TM) override;

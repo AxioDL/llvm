@@ -535,8 +535,7 @@ bool ELFObjectWriter::shouldRelocateWithSymbol(const MCAssembler &Asm,
   case MCSymbolRefExpr::VK_PPC_GOT_LO:
   case MCSymbolRefExpr::VK_PPC_GOT_HI:
   case MCSymbolRefExpr::VK_PPC_GOT_HA:
-  case MCSymbolRefExpr::VK_PPC_SDA_LO:
-  case MCSymbolRefExpr::VK_PPC_SDA2_LO:
+  case MCSymbolRefExpr::VK_PPC_SDA:
     return true;
   }
 

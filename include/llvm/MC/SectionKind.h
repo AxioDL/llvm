@@ -98,16 +98,35 @@ class SectionKind {
            /// marked 'constant'.
            Common,
 
-           /// This is writeable data that has a non-zero initializer.
+           /// Data - This is writeable data that has a non-zero initializer.
            Data,
 
-           /// ReadOnlyWithRel - These are global variables that are never
-           /// written to by the program, but that have relocations, so they
-           /// must be stuck in a writeable section so that the dynamic linker
-           /// can write to them.  If it chooses to, the dynamic linker can
-           /// mark the pages these globals end up on as read-only after it is
-           /// done with its relocation phase.
-           ReadOnlyWithRel
+    /// SmallDataSections - Data sections where individual entries are capped
+    /// for size, typically for global-register-relative relocation.
+    /// These test as logical equivalents with respect to their non-small
+    /// counterparts, but not vice-versa.
+
+       /// SmallData - This is writeable data that has a non-zero initializer.
+       SmallData,
+
+       /// SmallReadOnly - This is non-writeable data that has a non-zero
+       /// initializer.
+       SmallReadOnly,
+
+       /// SmallBSS - This is writeable data that has a zero initializer.
+       SmallBSS,
+
+       /// SmallCommon - These represent tentative definitions, which always
+       /// have a zero initializer and are never marked 'constant'.
+       SmallCommon,
+
+    /// ReadOnlyWithRel - These are global variables that are never
+    /// written to by the program, but that have relocations, so they
+    /// must be stuck in a writeable section so that the dynamic linker
+    /// can write to them.  If it chooses to, the dynamic linker can
+    /// mark the pages these globals end up on as read-only after it is
+    /// done with its relocation phase.
+    ReadOnlyWithRel
   } K : 8;
 public:
 
@@ -115,7 +134,7 @@ public:
   bool isText() const { return K == Text; }
 
   bool isReadOnly() const {
-    return K == ReadOnly || isMergeableCString() ||
+    return K == ReadOnly || K == SmallReadOnly || isMergeableCString() ||
            isMergeableConst();
   }
 
@@ -148,16 +167,27 @@ public:
   bool isThreadData() const { return K == ThreadData; }
 
   bool isGlobalWriteableData() const {
-    return isBSS() || isCommon() || isData() || isReadOnlyWithRel();
+    return isBSS() || isCommon() || isData() ||
+           isReadOnlyWithRel();
   }
 
-  bool isBSS() const { return K == BSS || K == BSSLocal || K == BSSExtern; }
+  bool isBSS() const { return K == BSS || K == BSSLocal ||
+                              K == BSSExtern || K == SmallBSS; }
   bool isBSSLocal() const { return K == BSSLocal; }
   bool isBSSExtern() const { return K == BSSExtern; }
 
-  bool isCommon() const { return K == Common; }
+  bool isCommon() const { return K == Common || K == SmallCommon; }
 
-  bool isData() const { return K == Data; }
+  bool isData() const { return K == Data || K == SmallData; }
+
+  bool isSmallData() const { return K == SmallData; }
+  bool isSmallReadOnly() const { return K == SmallReadOnly; }
+  bool isSmallBSS() const { return K == SmallBSS; }
+  bool isSmallCommon() const { return K == SmallCommon; }
+  bool isSmallSection() const { return isSmallData() ||
+                                       isSmallReadOnly() ||
+                                       isSmallBSS() ||
+                                       isSmallCommon(); }
 
   bool isReadOnlyWithRel() const {
     return K == ReadOnlyWithRel;
@@ -194,6 +224,10 @@ public:
   static SectionKind getCommon() { return get(Common); }
   static SectionKind getData() { return get(Data); }
   static SectionKind getReadOnlyWithRel() { return get(ReadOnlyWithRel); }
+  static SectionKind getSmallData() { return get(SmallData); }
+  static SectionKind getSmallReadOnly() { return get(SmallReadOnly); }
+  static SectionKind getSmallBSS() { return get(SmallBSS); }
+  static SectionKind getSmallCommon() { return get(SmallCommon); }
 };
 
 } // end namespace llvm

@@ -700,10 +700,6 @@ namespace llvm {
                             const CallInst &I,
                             unsigned Intrinsic) const override;
 
-    /// \brief Returns true if the EABI subtarget supports SDA allocation and
-    /// the provided object is eligible to be allocated there
-    bool IsGlobalInSmallSection(const GlobalObject *Obj) const;
-
     /// getOptimalMemOpType - Returns the target specific optimal type for load
     /// and store operations as a result of memset, memcpy, and memmove
     /// lowering. If DstAlign is zero that means it's safe to destination

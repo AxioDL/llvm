@@ -1773,7 +1773,7 @@ SDValue MipsTargetLowering::lowerGlobalAddress(SDValue Op,
         static_cast<const MipsTargetObjectFile *>(
             getTargetMachine().getObjFileLowering());
     const GlobalObject *GO = GV->getBaseObject();
-    if (GO && TLOF->IsGlobalInSmallSection(GO, getTargetMachine()))
+    if (GO && TLOF->isGlobalInSmallSection(GO, getTargetMachine()))
       // %gp_rel relocation
       return getAddrGPRel(N, SDLoc(N), Ty, DAG);
 
@@ -1922,7 +1922,7 @@ lowerConstantPool(SDValue Op, SelectionDAG &DAG) const
         static_cast<const MipsTargetObjectFile *>(
             getTargetMachine().getObjFileLowering());
 
-    if (TLOF->IsConstantInSmallSection(DAG.getDataLayout(), N->getConstVal(),
+    if (TLOF->isConstantInSmallSection(DAG.getDataLayout(), N->getConstVal(),
                                        getTargetMachine()))
       // %gp_rel relocation
       return getAddrGPRel(N, SDLoc(N), Ty, DAG);

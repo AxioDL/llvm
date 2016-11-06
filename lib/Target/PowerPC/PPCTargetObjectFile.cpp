@@ -68,17 +68,17 @@ getDebugThreadLocalSymbol(const MCSymbol *Sym) const {
 // A address must be loaded from a small section if its size is less than the
 // small section size threshold. Data in this section must be addressed using
 // gp_rel operator.
-static bool IsInSmallSection(uint64_t Size) {
+static bool isInSmallSection(uint64_t Size) {
   // gcc has traditionally not treated zero-sized objects as small data, so this
   // is effectively part of the ABI.
   return Size > 0 && Size <= SSThreshold;
 }
 
 /// Return true if this global address should be placed into small data/bss
-/// section. This method does all the work, except for checking the section
+/// section. This method does all the work, directly influencing section
 /// kind.
 bool PPCEmbeddedTargetObjectFile::
-IsGlobalInSmallSectionImpl(const GlobalObject *GO,
+isGlobalInSmallSectionKind(const GlobalObject *GO,
                            const TargetMachine &TM) const {
   const PPCSubtarget &Subtarget =
       *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
@@ -93,30 +93,8 @@ IsGlobalInSmallSectionImpl(const GlobalObject *GO,
     return false;
 
   Type *Ty = GVA->getValueType();
-  return IsInSmallSection(
+  return isInSmallSection(
       GVA->getParent()->getDataLayout().getTypeAllocSize(Ty));
-}
-
-/// Return true if this global address should be placed into small data/bss
-/// section.
-bool PPCEmbeddedTargetObjectFile::IsGlobalInSmallSection(
-    const GlobalObject *GO, const TargetMachine &TM) const {
-  // We first check the case where global is a declaration, because finding
-  // section kind using getKindForGlobal() is only allowed for global
-  // definitions.
-  if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
-    return IsGlobalInSmallSectionImpl(GO, TM);
-
-  return IsGlobalInSmallSection(GO, TM, getKindForGlobal(GO, TM));
-}
-
-/// Return true if this global address should be placed into small data/bss
-/// section.
-bool PPCEmbeddedTargetObjectFile::
-IsGlobalInSmallSection(const GlobalObject *GO, const TargetMachine &TM,
-                       SectionKind Kind) const {
-  return (IsGlobalInSmallSectionImpl(GO, TM) &&
-          (Kind.isData() || Kind.isBSS() || Kind.isCommon()));
 }
 
 void
@@ -125,43 +103,33 @@ Initialize(MCContext &Ctx, const TargetMachine &TM) {
   TargetLoweringObjectFileELF::Initialize(Ctx, TM);
   InitializeELF(TM.Options.UseInitArray);
 
-  if (TM.getTargetTriple().isEmbeddedEnvironment()) {
+  const PPCSubtarget &Subtarget =
+      *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
+
+  if (Subtarget.useEABISmallDataSections()) {
     SmallDataSection = getContext().getELFSection(
-        ".sdata", ELF::SHT_PROGBITS,
-        ELF::SHF_WRITE | ELF::SHF_ALLOC | ELF::SHF_PPC_SMALLREL);
-
+        ".sdata", ELF::SHT_PROGBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
     SmallData2Section = getContext().getELFSection(
-        ".sdata2", ELF::SHT_PROGBITS,
-        ELF::SHF_ALLOC | ELF::SHF_PPC_SMALLREL);
-
-    SmallBssSection = getContext().getELFSection(".sbss", ELF::SHT_NOBITS,
-        ELF::SHF_WRITE | ELF::SHF_ALLOC |
-        ELF::SHF_PPC_SMALLREL);
-
-    SmallBss2Section = getContext().getELFSection(".sbss2", ELF::SHT_NOBITS,
-        ELF::SHF_ALLOC |
-        ELF::SHF_PPC_SMALLREL);
+        ".sdata2", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+    SmallBssSection = getContext().getELFSection(
+        ".sbss", ELF::SHT_NOBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
   }
 }
 
 MCSection *PPCEmbeddedTargetObjectFile::SelectSectionForGlobal(
     const GlobalObject *GO, SectionKind Kind, const TargetMachine &TM) const {
+  const PPCSubtarget &Subtarget =
+      *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
+
   // Handle Small Section classification here.
-  if (SmallDataSection) {
-    if (Kind.isBSS() && IsGlobalInSmallSection(GO, TM, Kind))
-      return Kind.isReadOnly() ? SmallBss2Section : SmallBssSection;
-    if (Kind.isData() && IsGlobalInSmallSection(GO, TM, Kind))
-      return Kind.isReadOnly() ? SmallData2Section : SmallDataSection;
+  if (Subtarget.useEABISmallDataSections()) {
+    if (Kind.isSmallBSS())
+      return SmallBssSection;
+    if (Kind.isSmallReadOnly())
+      return SmallData2Section;
+    if (Kind.isSmallSection())
+      return SmallDataSection;
   }
 
   return TargetLoweringObjectFileELF::SelectSectionForGlobal(GO, Kind, TM);
-}
-
-const MCExpr *PPCEmbeddedTargetObjectFile::
-getDebugThreadLocalSymbol(const MCSymbol *Sym) const {
-  const MCExpr *Expr =
-    MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_DTPREL, getContext());
-  return MCBinaryExpr::createAdd(Expr,
-                                 MCConstantExpr::create(0x8000, getContext()),
-                                 getContext());
 }

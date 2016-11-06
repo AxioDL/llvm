@@ -93,8 +93,7 @@ namespace llvm {
     MO_DTPREL_LO = 5 << 4,
     MO_TLSLD_LO = 6 << 4,
     MO_TOC_LO = 7 << 4,
-    MO_SDA_LO = 9 << 4,
-    MO_SDA2_LO = 10 << 4,
+    MO_SDA = 9 << 4,
 
     // Symbol for VK_PPC_TLS fixup attached to an ADD instruction
     MO_TLS = 8 << 4

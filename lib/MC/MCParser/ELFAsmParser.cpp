@@ -47,6 +47,9 @@ public:
     addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveRoData>(".rodata");
     addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveTData>(".tdata");
     addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveTBSS>(".tbss");
+    addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveSData>(".sdata");
+    addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveSData2>(".sdata2");
+    addDirectiveHandler<&ELFAsmParser::ParseSectionDirectiveSBss>(".sbss");
     addDirectiveHandler<
       &ELFAsmParser::ParseSectionDirectiveDataRel>(".data.rel");
     addDirectiveHandler<
@@ -108,6 +111,21 @@ public:
                               ELF::SHF_ALLOC |
                               ELF::SHF_TLS | ELF::SHF_WRITE,
                               SectionKind::getThreadBSS());
+  }
+  bool ParseSectionDirectiveSData(StringRef, SMLoc) {
+    return ParseSectionSwitch(".sdata", ELF::SHT_PROGBITS,
+                              ELF::SHF_ALLOC | ELF::SHF_WRITE,
+                              SectionKind::getSmallData());
+  }
+  bool ParseSectionDirectiveSData2(StringRef, SMLoc) {
+    return ParseSectionSwitch(".sdata2", ELF::SHT_PROGBITS,
+                              ELF::SHF_ALLOC,
+                              SectionKind::getSmallReadOnly());
+  }
+  bool ParseSectionDirectiveSBss(StringRef, SMLoc) {
+    return ParseSectionSwitch(".sbss", ELF::SHT_NOBITS,
+                              ELF::SHF_WRITE | ELF::SHF_ALLOC,
+                              SectionKind::getSmallBSS());
   }
   bool ParseSectionDirectiveDataRel(StringRef, SMLoc) {
     return ParseSectionSwitch(".data.rel", ELF::SHT_PROGBITS,
@@ -231,12 +249,12 @@ bool ELFAsmParser::ParseSectionName(StringRef &SectionName) {
   }
 
   for (;;) {
-    
+
     SMLoc PrevLoc = getLexer().getLoc();
     if (getLexer().is(AsmToken::Comma) ||
       getLexer().is(AsmToken::EndOfStatement))
       break;
-    
+
     unsigned CurSize;
     if (getLexer().is(AsmToken::String)) {
       CurSize = getTok().getIdentifier().size() + 2;

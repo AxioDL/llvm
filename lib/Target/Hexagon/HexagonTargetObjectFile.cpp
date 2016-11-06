@@ -115,7 +115,7 @@ MCSection *HexagonTargetObjectFile::SelectSectionForGlobal(
          << (Kind.isBSS() ? "kind_bss " : "" )
          << (Kind.isBSSLocal() ? "kind_bss_local " : "" ));
 
-  if (isGlobalInSmallSection(GO, TM))
+  if (Kind.isSmallSection())
     return selectSmallSectionForGlobal(GO, Kind, TM);
 
   if (Kind.isCommon()) {
@@ -155,7 +155,7 @@ MCSection *HexagonTargetObjectFile::getExplicitSectionGlobal(
                                         ELF::SHF_WRITE | ELF::SHF_ALLOC);
   }
 
-  if (isGlobalInSmallSection(GO, TM))
+  if (Kind.isSmallSection())
     return selectSmallSectionForGlobal(GO, Kind, TM);
 
   // Otherwise, we work the same as ELF.
@@ -166,7 +166,7 @@ MCSection *HexagonTargetObjectFile::getExplicitSectionGlobal(
 
 /// Return true if this global value should be placed into small data/bss
 /// section.
-bool HexagonTargetObjectFile::isGlobalInSmallSection(const GlobalObject *GO,
+bool HexagonTargetObjectFile::isGlobalInSmallSectionKind(const GlobalObject *GO,
       const TargetMachine &TM) const {
   // Only global variables, not functions.
   DEBUG(dbgs() << "Checking if value is in small-data, -G"
@@ -307,7 +307,7 @@ MCSection *HexagonTargetObjectFile::selectSmallSectionForGlobal(
 
   TRACE("Small data. Size(" << Size << ")");
   // Handle Small Section classification here.
-  if (Kind.isBSS() || Kind.isBSSLocal()) {
+  if (Kind.isBSS()) {
     // If -mno-sort-sda is not set, find out smallest accessible entity in
     // declaration and add it to the section name string.
     // Note. It does not track the actual usage of the value, only its de-
