@@ -131,9 +131,9 @@ def PPCmffs   : SDNode<"PPCISD::MFFS",
 def PPCfaddrtz: SDNode<"PPCISD::FADDRTZ", SDTFPBinOp, []>;
 
 
-def PPCfsel   : SDNode<"PPCISD::FSEL",
+def PPCfsel   : SDNode<"PPCISD::FSEL",  
    // Type constraint for fsel.
-   SDTypeProfile<1, 3, [SDTCisSameAs<0, 2>, SDTCisSameAs<0, 3>,
+   SDTypeProfile<1, 3, [SDTCisSameAs<0, 2>, SDTCisSameAs<0, 3>, 
                         SDTCisFP<0>, SDTCisVT<1, f64>]>, []>;
 
 def PPChi       : SDNode<"PPCISD::Hi", SDTIntBinOp, []>;
@@ -341,7 +341,7 @@ def imm16ShiftedZExt : PatLeaf<(imm), [{
 
 def imm16ShiftedSExt : PatLeaf<(imm), [{
   // imm16ShiftedSExt predicate - True if only bits in the top 16-bits of the
-  // immediate are set.  Used by instructions like 'addis'.  Identical to
+  // immediate are set.  Used by instructions like 'addis'.  Identical to 
   // imm16ShiftedZExt in 32-bit mode.
   if (N->getZExtValue() & 0xFFFF) return false;
   if (N->getValueType(0) == MVT::i32)
@@ -1113,7 +1113,7 @@ def DYNALLOC : Pseudo<(outs gprc:$result), (ins gprc:$negsize, memri:$fpsi), "#D
                              (PPCdynalloc i32:$negsize, iaddr:$fpsi))]>;
 def DYNAREAOFFSET : Pseudo<(outs i32imm:$result), (ins memri:$fpsi), "#DYNAREAOFFSET",
                        [(set i32:$result, (PPCdynareaoffset iaddr:$fpsi))]>;
-
+                         
 // SELECT_CC_* - Used to implement the SELECT_CC DAG operation.  Expanded after
 // instruction selection into a branch sequence.
 let usesCustomInserter = 1,    // Expanded after instruction selection.
@@ -1708,7 +1708,7 @@ def TD : XForm_1<31, 68, (outs), (ins u5imm:$to, g8rc:$rA, g8rc:$rB),
 // PPC32 Load Instructions.
 //
 
-// Unindexed (r+i) Loads.
+// Unindexed (r+i) Loads. 
 let PPC970_Unit = 2 in {
 def LBZ : DForm_1<34, (outs gprc:$rD), (ins memri:$src),
                   "lbz $rD, $src", IIC_LdStLoad,
@@ -1820,8 +1820,8 @@ def LHZX : XForm_1<31, 279, (outs gprc:$rD), (ins memrr:$src),
 def LWZX : XForm_1<31,  23, (outs gprc:$rD), (ins memrr:$src),
                    "lwzx $rD, $src", IIC_LdStLoad,
                    [(set i32:$rD, (load xaddr:$src))]>;
-
-
+                   
+                   
 def LHBRX : XForm_1<31, 790, (outs gprc:$rD), (ins memrr:$src),
                    "lhbrx $rD, $src", IIC_LdStLoad,
                    [(set i32:$rD, (PPClbrx xoaddr:$src, i16))]>;
@@ -1854,15 +1854,15 @@ def LMW : DForm_1<46, (outs gprc:$rD), (ins memri:$src),
 
 // Unindexed (r+i) Stores.
 let PPC970_Unit = 2 in {
-def STB  : DForm_1<38, (outs), (ins gprc:$rS, memri:$dst),
-                   "stb $rS, $dst", IIC_LdStStore,
-                   [(truncstorei8 i32:$rS, iaddr:$dst)]>;
-def STH  : DForm_1<44, (outs), (ins gprc:$rS, memri:$dst),
-                   "sth $rS, $dst", IIC_LdStStore,
-                   [(truncstorei16 i32:$rS, iaddr:$dst)]>;
-def STW  : DForm_1<36, (outs), (ins gprc:$rS, memri:$dst),
-                   "stw $rS, $dst", IIC_LdStStore,
-                   [(store i32:$rS, iaddr:$dst)]>;
+def STB  : DForm_1<38, (outs), (ins gprc:$rS, memri:$src),
+                   "stb $rS, $src", IIC_LdStStore,
+                   [(truncstorei8 i32:$rS, iaddr:$src)]>;
+def STH  : DForm_1<44, (outs), (ins gprc:$rS, memri:$src),
+                   "sth $rS, $src", IIC_LdStStore,
+                   [(truncstorei16 i32:$rS, iaddr:$src)]>;
+def STW  : DForm_1<36, (outs), (ins gprc:$rS, memri:$src),
+                   "stw $rS, $src", IIC_LdStStore,
+                   [(store i32:$rS, iaddr:$src)]>;
 def STFS : DForm_1<52, (outs), (ins f4rc:$rS, memri:$dst),
                    "stfs $rS, $dst", IIC_LdStSTFD,
                    [(store f32:$rS, iaddr:$dst)]>;
@@ -1918,7 +1918,7 @@ def STWX  : XForm_8<31, 151, (outs), (ins gprc:$rS, memrr:$dst),
                    "stwx $rS, $dst", IIC_LdStStore,
                    [(store i32:$rS, xaddr:$dst)]>,
                    PPC970_DGroup_Cracked;
-
+ 
 def STHBRX: XForm_8<31, 918, (outs), (ins gprc:$rS, memrr:$dst),
                    "sthbrx $rS, $dst", IIC_LdStStore,
                    [(PPCstbrx i32:$rS, xoaddr:$dst, i16)]>,
@@ -1931,7 +1931,7 @@ def STWBRX: XForm_8<31, 662, (outs), (ins gprc:$rS, memrr:$dst),
 def STFIWX: XForm_28<31, 983, (outs), (ins f8rc:$frS, memrr:$dst),
                      "stfiwx $frS, $dst", IIC_LdStSTFD,
                      [(PPCstfiwx f64:$frS, xoaddr:$dst)]>;
-
+                     
 def STFSX : XForm_28<31, 663, (outs), (ins f4rc:$frS, memrr:$dst),
                      "stfsx $frS, $dst", IIC_LdStSTFD,
                      [(store f32:$frS, xaddr:$dst)]>;
@@ -2486,7 +2486,7 @@ let usesCustomInserter = 1, Uses = [RM] in {
 
 // The above pseudo gets expanded to make use of the following instructions
 // to manipulate FPSCR.  Note that FPSCR is not modeled at the DAG level.
-let Uses = [RM], Defs = [RM] in {
+let Uses = [RM], Defs = [RM] in { 
   def MTFSB0 : XForm_43<63, 70, (outs), (ins u5imm:$FM),
                         "mtfsb0 $FM", IIC_IntMTFSB0, []>,
                PPC970_DGroup_Single, PPC970_Unit_FPU;
@@ -2600,7 +2600,7 @@ defm SUBFZE : XOForm_3rc<31, 200, 0, (outs gprc:$rT), (ins gprc:$rA),
 let PPC970_Unit = 3, hasSideEffects = 0 in {  // FPU Operations.
 let Uses = [RM] in {
 let isCommutable = 1 in {
-  defm FMADD : AForm_1r<63, 29,
+  defm FMADD : AForm_1r<63, 29, 
                       (outs f8rc:$FRT), (ins f8rc:$FRA, f8rc:$FRC, f8rc:$FRB),
                       "fmadd", "$FRT, $FRA, $FRC, $FRB", IIC_FPFused,
                       [(set f64:$FRT, (fma f64:$FRA, f64:$FRC, f64:$FRB))]>;
@@ -2814,13 +2814,13 @@ def : Pat<(add i32:$in, (PPChi tblockaddress:$g, 0)),
           (ADDIS $in, tblockaddress:$g)>;
 
 // Support for thread-local storage.
-def PPC32GOT: Pseudo<(outs gprc:$rD), (ins), "#PPC32GOT",
+def PPC32GOT: Pseudo<(outs gprc:$rD), (ins), "#PPC32GOT", 
                 [(set i32:$rD, (PPCppc32GOT))]>;
 
 // Get the _GLOBAL_OFFSET_TABLE_ in PIC mode.
 // This uses two output registers, the first as the real output, the second as a
 // temporary register, used internally in code generation.
-def PPC32PICGOT: Pseudo<(outs gprc:$rD, gprc:$rT), (ins), "#PPC32PICGOT",
+def PPC32PICGOT: Pseudo<(outs gprc:$rD, gprc:$rT), (ins), "#PPC32PICGOT", 
                 []>, NoEncode<"$rT">;
 
 def LDgotTprelL32: Pseudo<(outs gprc:$rD), (ins s16imm:$disp, gprc_nor0:$reg),
@@ -2957,7 +2957,6 @@ def : Pat<(fcopysign f64:$frB, f32:$frA),
 def : Pat<(fcopysign f32:$frB, f64:$frA),
           (FCPSGNS (COPY_TO_REGCLASS $frA, F4RC), $frB)>;
 
-include "PPCInstrPaired.td"
 include "PPCInstrAltivec.td"
 include "PPCInstrSPE.td"
 include "PPCInstr64Bit.td"
@@ -3149,7 +3148,7 @@ defm : ExtSetCCPat<SETEQ,
                               (RLWINM (CNTLZW $in), 27, 31, 31)>,
                    OutPatFrag<(ops node:$in),
                               (RLDICL (CNTLZD $in), 58, 63)> >;
-
+ 
 defm : ExtSetCCPat<SETNE,
                    PatFrag<(ops node:$in, node:$cc),
                            (setcc $in, 0, $cc)>,
@@ -3157,7 +3156,7 @@ defm : ExtSetCCPat<SETNE,
                               (RLWINM (i32not (CNTLZW $in)), 27, 31, 31)>,
                    OutPatFrag<(ops node:$in),
                               (RLDICL (i64not (CNTLZD $in)), 58, 63)> >;
-
+                 
 defm : ExtSetCCPat<SETLT,
                    PatFrag<(ops node:$in, node:$cc),
                            (setcc $in, 0, $cc)>,

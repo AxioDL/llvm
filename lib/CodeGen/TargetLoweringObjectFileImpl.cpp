@@ -117,7 +117,7 @@ getELFKindForNamedSection(StringRef Name, SectionKind K) {
   // section(".eh_frame") gcc will produce:
   //
   //   .section   .eh_frame,"a",@progbits
-
+  
   if (Name == getInstrProfCoverageSectionName(false))
     return SectionKind::getMetadata();
 
@@ -231,12 +231,6 @@ MCSection *TargetLoweringObjectFileELF::getExplicitSectionGlobal(
 static StringRef getSectionPrefixForGlobal(SectionKind Kind) {
   if (Kind.isText())
     return ".text";
-  if (Kind.isSmallData())
-    return ".sdata";
-  if (Kind.isSmallReadOnly())
-    return ".sdata2";
-  if (Kind.isSmallBSS())
-    return ".sbss";
   if (Kind.isReadOnly())
     return ".rodata";
   if (Kind.isBSS())

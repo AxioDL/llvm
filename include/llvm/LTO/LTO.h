@@ -345,8 +345,7 @@ public:
   /// Add an input file to the LTO link, using the provided symbol resolutions.
   /// The symbol resolutions must appear in the enumeration order given by
   /// InputFile::symbols().
-  Error add(std::unique_ptr<InputFile> Obj, ArrayRef<SymbolResolution> Res,
-            StringMap<std::string>* HanafudaPatches = nullptr);
+  Error add(std::unique_ptr<InputFile> Obj, ArrayRef<SymbolResolution> Res);
 
   /// Returns an upper bound on the number of tasks that the client may expect.
   /// This may only be called after all IR object files have been added. For a
@@ -438,11 +437,9 @@ private:
                             unsigned Partition);
 
   Error addRegularLTO(std::unique_ptr<InputFile> Input,
-                      ArrayRef<SymbolResolution> Res,
-                      StringMap<std::string>* HanafudaPatches = nullptr);
+                      ArrayRef<SymbolResolution> Res);
   Error addThinLTO(std::unique_ptr<InputFile> Input,
-                   ArrayRef<SymbolResolution> Res,
-                   StringMap<std::string>* HanafudaPatches = nullptr);
+                   ArrayRef<SymbolResolution> Res);
 
   Error runRegularLTO(AddStreamFn AddStream);
   Error runThinLTO(AddStreamFn AddStream, NativeObjectCache Cache,

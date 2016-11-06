@@ -57,11 +57,7 @@ public:
   bool isPPC64() const {
     const Triple &TT = getTargetTriple();
     return (TT.getArch() == Triple::ppc64 || TT.getArch() == Triple::ppc64le);
-  }
-  bool isHanafuda() const {
-    const Triple &TT = getTargetTriple();
-    return (TT.getOS() == Triple::Hanafuda);
-  }
+  };
 };
 
 /// PowerPC 32-bit target machine.

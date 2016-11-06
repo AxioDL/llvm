@@ -314,8 +314,7 @@ static void writeToResolutionFile(raw_ostream &OS, InputFile *Input,
 }
 
 Error LTO::add(std::unique_ptr<InputFile> Input,
-               ArrayRef<SymbolResolution> Res,
-               StringMap<std::string>* HanafudaPatches) {
+               ArrayRef<SymbolResolution> Res) {
   assert(!CalledGetMaxTasks);
 
   if (Conf.ResolutionFile)
@@ -332,15 +331,14 @@ Error LTO::add(std::unique_ptr<InputFile> Input,
   bool HasThinLTOSummary = hasGlobalValueSummary(MBRef, Conf.DiagHandler);
 
   if (HasThinLTOSummary)
-    return addThinLTO(std::move(Input), Res, HanafudaPatches);
+    return addThinLTO(std::move(Input), Res);
   else
-    return addRegularLTO(std::move(Input), Res, HanafudaPatches);
+    return addRegularLTO(std::move(Input), Res);
 }
 
 // Add a regular LTO object to the link.
 Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
-                         ArrayRef<SymbolResolution> Res,
-                         StringMap<std::string>* HanafudaPatches) {
+                         ArrayRef<SymbolResolution> Res) {
   if (!RegularLTO.CombinedModule) {
     RegularLTO.CombinedModule =
         llvm::make_unique<Module>("ld-temp.o", RegularLTO.Ctx);
@@ -355,30 +353,6 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
   Module &M = Obj->getModule();
   M.materializeMetadata();
   UpgradeDebugInfo(M);
-
-  Optional<StringSet<llvm::MallocAllocator>> HanafudaNewSyms;
-  if (HanafudaPatches) {
-    HanafudaNewSyms.emplace();
-    NamedMDNode *patchesNode = M.getNamedMetadata("hanafuda.patches");
-    if (patchesNode && patchesNode->getNumOperands()) {
-      MDNode *tuple = patchesNode->getOperand(0);
-      for (unsigned i = 0; i < tuple->getNumOperands(); ++i) {
-        const MDNode *patch = llvm::dyn_cast<MDTuple>(tuple->getOperand(i));
-        if (patch && patch->getNumOperands() >= 2) {
-          const MDNode *NewNode = llvm::dyn_cast<MDNode>(patch->getOperand(0));
-          const MDNode *OldNode = llvm::dyn_cast<MDNode>(patch->getOperand(1));
-          if (NewNode && NewNode->getNumOperands() && OldNode && OldNode->getNumOperands()) {
-            const MDString *New = llvm::dyn_cast<MDString>(NewNode->getOperand(0));
-            const MDString *Old = llvm::dyn_cast<MDString>(OldNode->getOperand(0));
-            if (New && Old) {
-              (*HanafudaPatches)[Old->getString()] = New->getString();
-              HanafudaNewSyms->insert(New->getString());
-            }
-          }
-        }
-      }
-    }
-  }
 
   SmallPtrSet<GlobalValue *, 8> Used;
   collectUsedGlobalVariables(M, Used, /*CompilerUsed*/ false);
@@ -395,15 +369,6 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
                   InputFile::symbol_iterator(Obj->symbol_end(), nullptr))) {
     assert(ResI != Res.end());
     SymbolResolution Res = *ResI++;
-
-    // If symbol is used as a patch target, ensure it's visible to regular
-    // objects (i.e. won't be optimized out)
-    if (HanafudaPatches) {
-      StringRef name = Sym.getName();
-      if (HanafudaNewSyms->find(name) != HanafudaNewSyms->end())
-        Res.VisibleToRegularObj = 1;
-    }
-
     addSymbolToGlobalRes(Obj.get(), Used, Sym, Res, 0);
 
     GlobalValue *GV = Obj->getSymbolGV(Sym.I->getRawDataRefImpl());
@@ -443,8 +408,7 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
 
 // Add a ThinLTO object to the link.
 Error LTO::addThinLTO(std::unique_ptr<InputFile> Input,
-                      ArrayRef<SymbolResolution> Res,
-                      StringMap<std::string>* HanafudaPatches) {
+                      ArrayRef<SymbolResolution> Res) {
   Module &M = Input->Obj->getModule();
   SmallPtrSet<GlobalValue *, 8> Used;
   collectUsedGlobalVariables(M, Used, /*CompilerUsed*/ false);
@@ -471,26 +435,6 @@ Error LTO::addThinLTO(std::unique_ptr<InputFile> Input,
           MBRef.getBufferIdentifier();
   }
   assert(ResI == Res.end());
-
-  if (HanafudaPatches) {
-    NamedMDNode *patchesNode = M.getNamedMetadata("hanafuda.patches");
-    if (patchesNode && patchesNode->getNumOperands()) {
-      MDNode *tuple = patchesNode->getOperand(0);
-      for (unsigned i = 0; i < tuple->getNumOperands(); ++i) {
-        const MDNode *patch = llvm::dyn_cast<MDTuple>(tuple->getOperand(i));
-        if (patch && patch->getNumOperands() >= 2) {
-          const MDNode *NewNode = llvm::dyn_cast<MDNode>(patch->getOperand(0));
-          const MDNode *OldNode = llvm::dyn_cast<MDNode>(patch->getOperand(1));
-          if (NewNode && NewNode->getNumOperands() && OldNode && OldNode->getNumOperands()) {
-            const MDString *New = llvm::dyn_cast<MDString>(NewNode->getOperand(0));
-            const MDString *Old = llvm::dyn_cast<MDString>(OldNode->getOperand(0));
-            if (New && Old)
-              (*HanafudaPatches)[Old->getString()] = New->getString();
-          }
-        }
-      }
-    }
-  }
 
   ThinLTO.ModuleMap[MBRef.getBufferIdentifier()] = MBRef;
   return Error();

@@ -20,11 +20,11 @@ enum Fixups {
   // fixup_ppc_br24 - 24-bit PC relative relocation for direct branches like 'b'
   // and 'bl'.
   fixup_ppc_br24 = FirstTargetFixupKind,
-
+  
   /// fixup_ppc_brcond14 - 14-bit PC relative relocation for conditional
   /// branches.
   fixup_ppc_brcond14,
-
+  
   /// fixup_ppc_br24abs - 24-bit absolute relocation for direct branches
   /// like 'ba' and 'bla'.
   fixup_ppc_br24abs,
@@ -36,7 +36,7 @@ enum Fixups {
   /// fixup_ppc_half16 - A 16-bit fixup corresponding to lo16(_foo)
   /// or ha16(_foo) for instrs like 'li' or 'addis'.
   fixup_ppc_half16,
-
+  
   /// fixup_ppc_half16ds - A 14-bit fixup corresponding to lo16(_foo) with
   /// implied 2 zero bits for instrs like 'std'.
   fixup_ppc_half16ds,
@@ -45,7 +45,7 @@ enum Fixups {
   /// to __tls_get_addr for the TLS general and local dynamic models,
   /// or inserts the thread-pointer register number.
   fixup_ppc_nofixup,
-
+  
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind

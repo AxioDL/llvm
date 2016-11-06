@@ -1,6 +1,6 @@
 # RUN: llvm-mc -triple=powerpc-unknown-linux-gnu -filetype=obj %s | \
 # RUN: llvm-readobj -r | FileCheck %s
-	.section .text
+	.text
 
 	.globl foo
 	.type foo,@function
@@ -14,7 +14,7 @@ foo:
 .LC1:
 	.size foo, . - foo
 
-	.section .sdata
+	.sdata
 	.globl smallval
 smallval:
 	.long 0xDEADBEEF

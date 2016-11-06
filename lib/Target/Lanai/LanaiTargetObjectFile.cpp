@@ -56,7 +56,7 @@ bool LanaiTargetObjectFile::isGlobalInSmallSection(
   if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
     return isGlobalInSmallSectionKind(GO, TM);
 
-  return getKindForGlobal(GO, TM).isSmallSection();
+  return getKindForGlobal(GO, TM).isSmallKind();
 }
 
 // Return true if this global address should be placed into small data/bss
@@ -86,7 +86,7 @@ MCSection *LanaiTargetObjectFile::SelectSectionForGlobal(
   // Handle Small Section classification here.
   if (Kind.isSmallBSS())
     return SmallBSSSection;
-  if (Kind.isSmallSection())
+  if (Kind.isSmallData())
     return SmallDataSection;
 
   // Otherwise, we work the same as ELF.

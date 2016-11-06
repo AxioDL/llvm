@@ -22,9 +22,11 @@
 #include "llvm/MC/MCParser/MCParsedAsmOperand.h"
 #include "llvm/MC/MCParser/MCTargetAsmParser.h"
 #include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCSymbolELF.h"
+#include "llvm/Support/ELF.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
@@ -280,6 +282,8 @@ class PPCAsmParser : public MCTargetAsmParser {
   bool ParseDarwinDirectiveMachine(SMLoc L);
   bool ParseDirectiveAbiVersion(SMLoc L);
   bool ParseDirectiveLocalEntry(SMLoc L);
+  bool ParseElfSSectionDirective(SMLoc L, StringRef Section,
+                                 unsigned Type, unsigned Flags);
 
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
@@ -1785,6 +1789,17 @@ bool PPCAsmParser::ParseDirective(AsmToken DirectiveID) {
       return ParseDirectiveAbiVersion(DirectiveID.getLoc());
     if (IDVal == ".localentry")
       return ParseDirectiveLocalEntry(DirectiveID.getLoc());
+    if (IDVal == ".sdata")
+      return ParseElfSSectionDirective(DirectiveID.getLoc(), IDVal,
+                                       ELF::SHT_PROGBITS,
+                                       ELF::SHF_WRITE | ELF::SHF_ALLOC);
+    if (IDVal == ".sdata2")
+      return ParseElfSSectionDirective(DirectiveID.getLoc(), IDVal,
+                                       ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+    if (IDVal == ".sbss")
+      return ParseElfSSectionDirective(DirectiveID.getLoc(), IDVal,
+                                       ELF::SHT_NOBITS,
+                                       ELF::SHF_WRITE | ELF::SHF_ALLOC);
   } else {
     if (IDVal == ".machine")
       return ParseDarwinDirectiveMachine(DirectiveID.getLoc());
@@ -1976,6 +1991,25 @@ bool PPCAsmParser::ParseDirectiveLocalEntry(SMLoc L) {
   return false;
 }
 
+/// parseSSectionDirective
+///  ::= .sbss
+///  ::= .sdata
+///  ::= .sdata2
+bool PPCAsmParser::ParseElfSSectionDirective(SMLoc L, StringRef Section,
+                                             unsigned Type, unsigned Flags) {
+  // If this is not the end of the statement, report an error.
+  if (getLexer().isNot(AsmToken::EndOfStatement)) {
+    Error(L, "unexpected token, expected end of statement");
+    return false;
+  }
+
+  MCSection *ELFSection = getContext().getELFSection(
+      Section, Type, Flags);
+  getParser().getStreamer().SwitchSection(ELFSection);
+
+  getParser().Lex(); // Eat EndOfStatement token.
+  return false;
+}
 
 
 /// Force static initialization.

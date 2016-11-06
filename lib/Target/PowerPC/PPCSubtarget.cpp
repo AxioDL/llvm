@@ -63,7 +63,6 @@ void PPCSubtarget::initializeEnvironment() {
   Use64BitRegs = false;
   UseCRBits = false;
   HasHardFloat = false;
-  HasPaired = false;
   HasAltivec = false;
   HasSPE = false;
   HasQPX = false;
@@ -149,7 +148,7 @@ void PPCSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
   IsLittleEndian = (TargetTriple.getArch() == Triple::ppc64le);
 
   // If EABI, enable small data sections
-  UseEABISmallDataSections = TargetTriple.isEmbeddedEnvironment();
+  UseEABISmallDataSections = TargetTriple.isEABI();
 }
 
 /// Return true if accesses to the specified global have to go through a dyld

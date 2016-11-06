@@ -464,12 +464,6 @@ void MCObjectFileInfo::initELFMCObjectFileInfo(const Triple &T) {
   DataSection = Ctx->getELFSection(".data", ELF::SHT_PROGBITS,
                                    ELF::SHF_WRITE | ELF::SHF_ALLOC);
 
-  SmallDataSection = Ctx->getELFSection(".sdata", ELF::SHT_PROGBITS,
-                                        ELF::SHF_WRITE | ELF::SHF_ALLOC);
-
-  SmallReadOnlySection = Ctx->getELFSection(".sdata2", ELF::SHT_PROGBITS,
-                                            ELF::SHF_ALLOC);
-
   ReadOnlySection =
       Ctx->getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
 

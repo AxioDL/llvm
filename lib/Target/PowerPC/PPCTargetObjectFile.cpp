@@ -66,8 +66,8 @@ getDebugThreadLocalSymbol(const MCSymbol *Sym) const {
 
 
 // A address must be loaded from a small section if its size is less than the
-// small section size threshold. Data in this section must be addressed using
-// gp_rel operator.
+// small section size threshold. Data in this section must be addressed against
+// non-volatile r13 for .sdata/.sbss and r2 for .sdata2.
 static bool isInSmallSection(uint64_t Size) {
   // gcc has traditionally not treated zero-sized objects as small data, so this
   // is effectively part of the ABI.
@@ -127,7 +127,7 @@ MCSection *PPCEmbeddedTargetObjectFile::SelectSectionForGlobal(
       return SmallBssSection;
     if (Kind.isSmallReadOnly())
       return SmallData2Section;
-    if (Kind.isSmallSection())
+    if (Kind.isSmallKind())
       return SmallDataSection;
   }
 

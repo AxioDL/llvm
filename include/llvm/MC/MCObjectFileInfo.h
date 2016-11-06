@@ -74,12 +74,6 @@ protected:
   /// to emit them into.
   MCSection *CompactUnwindSection;
 
-  /// Section directive for size-capped data.
-  MCSection *SmallDataSection;
-
-  /// Section directive for size-capped, read-only data.
-  MCSection *SmallReadOnlySection;
-
   // Dwarf sections for debug info.  If a target supports debug info, these must
   // be set.
   MCSection *DwarfAbbrevSection;
@@ -224,8 +218,6 @@ public:
   MCSection *getDataSection() const { return DataSection; }
   MCSection *getBSSSection() const { return BSSSection; }
   MCSection *getReadOnlySection() const { return ReadOnlySection; }
-  MCSection *getSmallDataSection() const { return SmallDataSection; }
-  MCSection *getSmallReadOnlySection() const { return SmallReadOnlySection; }
   MCSection *getLSDASection() const { return LSDASection; }
   MCSection *getCompactUnwindSection() const { return CompactUnwindSection; }
   MCSection *getDwarfAbbrevSection() const { return DwarfAbbrevSection; }

@@ -151,7 +151,7 @@ static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
   if (TT.isOSDarwin())
     return make_unique<TargetLoweringObjectFileMachO>();
 
-  if (TT.isEmbeddedEnvironment())
+  if (TT.isEABI())
     return make_unique<PPCEmbeddedTargetObjectFile>();
 
   return make_unique<PPC64LinuxTargetObjectFile>();

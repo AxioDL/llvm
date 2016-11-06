@@ -47,6 +47,7 @@ void MipsTargetObjectFile::Initialize(MCContext &Ctx, const TargetMachine &TM){
   SmallBSSSection = getContext().getELFSection(".sbss", ELF::SHT_NOBITS,
                                                ELF::SHF_WRITE | ELF::SHF_ALLOC |
                                                    ELF::SHF_MIPS_GPREL);
+  this->TM = &static_cast<const MipsTargetMachine &>(TM);
 }
 
 // A address must be loaded from a small section if its size is less than the
@@ -68,7 +69,7 @@ bool MipsTargetObjectFile::isGlobalInSmallSection(
   if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
     return isGlobalInSmallSectionKind(GO, TM);
 
-  return getKindForGlobal(GO, TM).isSmallSection();
+  return getKindForGlobal(GO, TM).isSmallKind();
 }
 
 /// Return true if this global address should be placed into small data/bss
@@ -111,7 +112,7 @@ MCSection *MipsTargetObjectFile::SelectSectionForGlobal(
   // Handle Small Section classification here.
   if (Kind.isSmallBSS())
     return SmallBSSSection;
-  if (Kind.isSmallSection())
+  if (Kind.isSmallData())
     return SmallDataSection;
 
   // Otherwise, we work the same as ELF.
