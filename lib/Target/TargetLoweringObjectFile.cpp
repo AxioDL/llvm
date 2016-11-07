@@ -151,33 +151,28 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
     return SectionKind::getThreadData();
   }
 
-  // Provide object-file-dependent decision for data sections
+  // Provide target-dependent decision for data sections
   // when the global should be allocated in the small section
   const TargetLoweringObjectFile *TLOF = TM.getObjFileLowering();
   auto GetData = [=,&TM]() -> SectionKind {
-    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
-      return SectionKind::getData();
-    return SectionKind::getSmallData();
+    return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
+      SectionKind::getData() : SectionKind::getSmallData();
   };
   auto GetReadOnly = [=,&TM]() -> SectionKind {
-    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
-      return SectionKind::getReadOnly();
-    return SectionKind::getSmallReadOnly();
+    return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
+      SectionKind::getReadOnly() : SectionKind::getSmallReadOnly();
   };
   auto GetBSS = [=,&TM](SectionKind OrigBSS) -> SectionKind {
-    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
-      return OrigBSS;
-    return SectionKind::getSmallBSS();
+    return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
+      OrigBSS : SectionKind::getSmallBSS();
   };
   auto GetCommon = [=,&TM]() -> SectionKind {
-    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
-      return SectionKind::getCommon();
-    return SectionKind::getSmallCommon();
+    return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
+      SectionKind::getCommon() : SectionKind::getSmallCommon();
   };
   auto GetMergeableConst = [=,&TM](SectionKind OrigMerge) -> SectionKind {
-    if (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM))
-      return OrigMerge;
-    return SectionKind::getSmallReadOnly();
+    return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
+      OrigMerge : SectionKind::getSmallReadOnly();
   };
 
   // Variables with common linkage always get classified as common.
@@ -269,7 +264,9 @@ bool TargetLoweringObjectFile::isGlobalInSmallSection(const GlobalObject *GO,
     // getKindForGlobal only accepts defined objects. This failsafe bypasses
     // classification steps not needed when handling declarations.
     const TargetLoweringObjectFile *TLOF = TM.getObjFileLowering();
-    return (TLOF && TLOF->isGlobalInSmallSectionKind(GO, TM));
+    assert(TLOF != nullptr &&
+           "No TargetLoweringObjectFile for small section classification");
+    return TLOF->isGlobalInSmallSectionKind(GO, TM);
   }
 
   // Proceed with full SectionKind classification
