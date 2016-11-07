@@ -151,8 +151,8 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
     return SectionKind::getThreadData();
   }
 
-  // Provide target-dependent decision for data sections
-  // when the global should be allocated in the small section
+  // Provide target-dependent decision for data sections whether the global
+  // should be allocated in the small section.
   const TargetLoweringObjectFile *TLOF = TM.getObjFileLowering();
   auto GetData = [=,&TM]() -> SectionKind {
     return (!TLOF || !TLOF->isGlobalInSmallSectionKind(GO, TM)) ?
