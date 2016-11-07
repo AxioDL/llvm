@@ -1769,11 +1769,9 @@ SDValue MipsTargetLowering::lowerGlobalAddress(SDValue Op,
   const GlobalValue *GV = N->getGlobal();
 
   if (!isPositionIndependent() && !ABI.IsN64()) {
-    const MipsTargetObjectFile *TLOF =
-        static_cast<const MipsTargetObjectFile *>(
-            getTargetMachine().getObjFileLowering());
     const GlobalObject *GO = GV->getBaseObject();
-    if (GO && TLOF->isGlobalInSmallSection(GO, getTargetMachine()))
+    if (GO && TargetLoweringObjectFile::isGlobalInSmallSection(
+              GO, getTargetMachine()))
       // %gp_rel relocation
       return getAddrGPRel(N, SDLoc(N), Ty, DAG);
 

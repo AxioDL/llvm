@@ -24,11 +24,6 @@ class LanaiTargetObjectFile : public TargetLoweringObjectFileELF {
 public:
   void Initialize(MCContext &Ctx, const TargetMachine &TM) override;
 
-  /// Return true if this global address should be placed into small data/bss
-  /// section.
-  bool isGlobalInSmallSection(const GlobalObject *GO,
-                              const TargetMachine &TM) const;
-
   MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
                                     const TargetMachine &TM) const override;
 

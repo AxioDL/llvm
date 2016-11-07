@@ -60,19 +60,6 @@ static bool IsInSmallSection(uint64_t Size) {
 }
 
 /// Return true if this global address should be placed into small data/bss
-/// section.
-bool MipsTargetObjectFile::isGlobalInSmallSection(
-    const GlobalObject *GO, const TargetMachine &TM) const {
-  // We first check the case where global is a declaration, because finding
-  // section kind using getKindForGlobal() is only allowed for global
-  // definitions.
-  if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage())
-    return isGlobalInSmallSectionKind(GO, TM);
-
-  return getKindForGlobal(GO, TM).isSmallKind();
-}
-
-/// Return true if this global address should be placed into small data/bss
 /// section. This method does all the work, directly influencing section
 /// kind.
 bool MipsTargetObjectFile::
