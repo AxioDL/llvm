@@ -230,7 +230,7 @@ unsigned PPCMCCodeEmitter::getMemRIEncoding(const MCInst &MI, unsigned OpNo,
         // Small data relocation must be one byte into instruction
         Fixups.push_back(MCFixup::create(IsLittleEndian? 3 : 1, MO.getExpr(),
                                          (MCFixupKind)PPC::fixup_ppc_half16));
-        return RegBits;
+        return 0; // RegBits added by SDA21 relocation
       }
     }
   }

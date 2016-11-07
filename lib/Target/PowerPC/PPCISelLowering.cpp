@@ -1906,11 +1906,13 @@ bool PPCTargetLowering::SelectAddressRegImm(SDValue N, SDValue &Disp,
             dyn_cast<GlobalAddressSDNode>(Disp.getNode())) {
           const GlobalValue *GV = GSDN->getGlobal();
           if (const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV)) {
-            SectionKind Kind = TargetLoweringObjectFile::getKindForGlobal(
-                               GVar, getTargetMachine());
-            if (Kind.isSmallKind()) {
-              // Linker will assign register during relocation
-              Base = DAG.getRegister(PPC::R0, MVT::i32);
+            if (TargetLoweringObjectFile::isGlobalInSmallSection(
+                GVar, getTargetMachine())) {
+              // This register selection is only relevant for ASM printing.
+              // MO_SDA_LO will ensure encoded register is R0, and the linker
+              // selects the actual base register during relocation.
+              Base = DAG.getRegister(GVar->isConstant() ? PPC::R2 : PPC::R13,
+                                     MVT::i32);
               Disp = DAG.getTargetGlobalAddress(GV, SDLoc(GSDN),
                                                 Disp.getValueType(),
                                                 GSDN->getOffset(),

@@ -89,6 +89,12 @@ public:
   static SectionKind getKindForGlobal(const GlobalObject *GO,
                                       const TargetMachine &TM);
 
+  /// Determine if global variable is allocated in a subtarget small data
+  /// SectionKind. This call may be used on declarations and other external
+  /// linkage uses.
+  static bool isGlobalInSmallSection(const GlobalObject *GO,
+                                     const TargetMachine &TM);
+
   /// This method computes the appropriate section to emit the specified global
   /// variable or function definition. This should not be passed external (or
   /// available externally) globals.
