@@ -256,8 +256,7 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
 }
 
 /// Determine if global variable is allocated in a subtarget small data
-/// SectionKind. This call may be used on declarations and other external
-/// linkage uses.
+/// SectionKind.
 bool TargetLoweringObjectFile::isGlobalInSmallSection(const GlobalObject *GO,
                                                       const TargetMachine &TM) {
   if (GO->isDeclaration() || GO->hasAvailableExternallyLinkage()) {

@@ -90,8 +90,7 @@ public:
                                       const TargetMachine &TM);
 
   /// Determine if global variable is allocated in a subtarget small data
-  /// SectionKind. This call may be used on declarations and other external
-  /// linkage uses.
+  /// SectionKind.
   static bool isGlobalInSmallSection(const GlobalObject *GO,
                                      const TargetMachine &TM);
 
