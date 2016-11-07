@@ -603,10 +603,10 @@ public:
     return getArch() == Triple::nvptx || getArch() == Triple::nvptx64;
   }
 
-  /// Tests whether the execution environment is EABI
+  /// Tests whether the environment is EABI
   bool isEABI() const { return getEnvironment() == Triple::EABI; }
 
-  /// Tests wether the target supports comdat
+  /// Tests whether the target supports comdat
   bool supportsCOMDAT() const { return !isOSBinFormatMachO(); }
 
   /// @}

@@ -291,11 +291,17 @@ public:
   bool isDarwin() const { return TargetTriple.isMacOSX(); }
   /// isBGQ - True if this is a BG/Q platform.
   bool isBGQ() const { return TargetTriple.getVendor() == Triple::BGQ; }
+  /// isEABI - True if this is an EABI platform.
+  bool isEABI() const { return TargetTriple.isEABI(); }
+
+  /// shouldStripRegisterPrefix - True if platform uses PPC assembler that
+  /// needs register prefixes stripped
+  bool shouldStripRegisterPrefix() const { return !isDarwin() &&
+                                                  !isEABI(); }
 
   bool isTargetELF() const { return TargetTriple.isOSBinFormatELF(); }
   bool isTargetMachO() const { return TargetTriple.isOSBinFormatMachO(); }
   bool isTargetLinux() const { return TargetTriple.isOSLinux(); }
-  bool isTargetEABI() const { return TargetTriple.getEnvironment() == Triple::EABI; }
 
   bool isDarwinABI() const { return isTargetMachO() || isDarwin(); }
   bool isSVR4ABI() const { return !isDarwinABI(); }
