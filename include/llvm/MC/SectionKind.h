@@ -117,22 +117,25 @@ class SectionKind {
        /// SmallKindMask - Used to access the underlying Kind
        SmallKindMask = 0x7f,
 
+       /// SmallKind - Used to logically qualify a type as small
+       SmallKind = 0x80,
+
        /// SmallData - This is writeable data that has a non-zero initializer.
-       SmallData = (Data | 0x80),
+       SmallData = (Data | SmallKind),
 
        /// SmallReadOnly - This is non-writeable data that has a non-zero
        /// initializer.
-       SmallReadOnly = (ReadOnly | 0x80),
+       SmallReadOnly = (ReadOnly | SmallKind),
 
        /// SmallBSS - This is writeable data that has a zero initializer.
-       SmallBSS = (BSS | 0x80),
+       SmallBSS = (BSS | SmallKind),
 
        /// SmallCommon - These represent tentative definitions, which always
        /// have a zero initializer and are never marked 'constant'.
-       SmallCommon = (Common | 0x80)
+       SmallCommon = (Common | SmallKind)
   } K : 8;
 
-  int smallUnderlyingKind() const { return K & SmallKindMask; }
+  int UnderlyingKind() const { return K & SmallKindMask; }
 
 public:
 
@@ -140,7 +143,7 @@ public:
   bool isText() const { return K == Text; }
 
   bool isReadOnly() const {
-    return smallUnderlyingKind() == ReadOnly || isMergeableCString() ||
+    return UnderlyingKind() == ReadOnly || isMergeableCString() ||
            isMergeableConst();
   }
 
@@ -177,15 +180,15 @@ public:
   }
 
   bool isBSS() const {
-    int UK = smallUnderlyingKind();
+    int UK = UnderlyingKind();
     return UK == BSS || UK == BSSLocal || UK == BSSExtern;
   }
-  bool isBSSLocal() const { return smallUnderlyingKind() == BSSLocal; }
-  bool isBSSExtern() const { return smallUnderlyingKind() == BSSExtern; }
+  bool isBSSLocal() const { return UnderlyingKind() == BSSLocal; }
+  bool isBSSExtern() const { return UnderlyingKind() == BSSExtern; }
 
-  bool isCommon() const { return smallUnderlyingKind() == Common; }
+  bool isCommon() const { return UnderlyingKind() == Common; }
 
-  bool isData() const { return smallUnderlyingKind() == Data; }
+  bool isData() const { return UnderlyingKind() == Data; }
 
   bool isReadOnlyWithRel() const {
     return K == ReadOnlyWithRel;
@@ -195,7 +198,7 @@ public:
   bool isSmallReadOnly() const { return K == SmallReadOnly; }
   bool isSmallBSS() const { return K == SmallBSS; }
   bool isSmallCommon() const { return K == SmallCommon; }
-  bool isSmallKind() const { return (K & 0x80) == 0x80; }
+  bool isSmallKind() const { return (K & SmallKind) == SmallKind; }
 private:
   static SectionKind get(Kind K) {
     SectionKind Res;
