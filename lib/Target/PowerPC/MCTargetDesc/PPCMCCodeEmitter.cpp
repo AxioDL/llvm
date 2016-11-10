@@ -228,7 +228,7 @@ unsigned PPCMCCodeEmitter::getMemRIEncoding(const MCInst &MI, unsigned OpNo,
     if (const MCSymbolRefExpr *Expr = dyn_cast<MCSymbolRefExpr>(MO.getExpr())) {
       if (Expr->getKind() == MCSymbolRefExpr::VK_PPC_SDA) {
         // Small data relocation must be one byte into instruction
-        Fixups.push_back(MCFixup::create(IsLittleEndian? 3 : 1, MO.getExpr(),
+        Fixups.push_back(MCFixup::create(IsLittleEndian? 0 : 1, MO.getExpr(),
                                          (MCFixupKind)PPC::fixup_ppc_half16));
         return 0; // RegBits added by SDA21 relocation
       }
