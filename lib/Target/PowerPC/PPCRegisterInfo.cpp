@@ -254,7 +254,6 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     if (hasBasePointer(MF))
       Reserved.set(PPC::X30);
 
-
     // The 64-bit SVR4 ABI reserves r2 for the TOC pointer.
     if (Subtarget.isSVR4ABI()) {
       // We only reserve r2 if we need to use the TOC pointer. If we have no
