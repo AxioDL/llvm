@@ -5,17 +5,22 @@ from __future__ import print_function
 desc = '''Generate HTML output to visualize optimization records from the YAML files
 generated with -fsave-optimization-record and -fdiagnostics-show-hotness.
 
-The tools requires PyYAML to be installed.'''
+The tools requires PyYAML and Pygments Python packages.'''
 
 import yaml
 import argparse
 import os.path
+import re
 import subprocess
 import shutil
+from pygments import highlight
+from pygments.lexers.c_cpp import CppLexer
+from pygments.formatters import HtmlFormatter
 
 parser = argparse.ArgumentParser(description=desc)
 parser.add_argument('yaml_files', nargs='+')
 parser.add_argument('output_dir')
+parser.add_argument('-source-dir', '-s', default='', help='set source directory')
 args = parser.parse_args()
 
 p = subprocess.Popen(['c++filt', '-n'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -25,6 +30,8 @@ def demangle(name):
 
 class Remark(yaml.YAMLObject):
     max_hotness = 1
+    # Map function names to their source location for function where inlining happened
+    caller_loc = dict()
 
     @property
     def File(self):
@@ -112,28 +119,62 @@ class Missed(Remark):
 
 class SourceFileRenderer:
     def __init__(self, filename):
-        self.source_stream = open(filename)
+        existing_filename = None
+        if os.path.exists(filename):
+            existing_filename = filename
+        else:
+            fn = os.path.join(args.source_dir, filename)
+            if os.path.exists(fn):
+                existing_filename = fn
+
         self.stream = open(os.path.join(args.output_dir, SourceFileRenderer.html_file_name(filename)), 'w')
+        if existing_filename:
+            self.source_stream = open(existing_filename)
+        else:
+            self.source_stream = None
+            print('''
+<html>
+<h1>Unable to locate file {}</h1>
+</html>
+            '''.format(filename), file=self.stream)
+
+        self.html_formatter = HtmlFormatter()
+        self.cpp_lexer = CppLexer()
 
     def render_source_line(self, linenum, line):
+        html_line = highlight(line, self.cpp_lexer, self.html_formatter)
         print('''
 <tr>
 <td><a name=\"L{linenum}\">{linenum}</a></td>
 <td></td>
 <td></td>
-<td><pre>{line}</pre></td>
+<td>{html_line}</td>
 </tr>'''.format(**locals()), file=self.stream)
 
-    def render_inline_remarks(self, r):
+    def render_inline_remarks(self, r, line):
+        inlining_context = r.DemangledFunctionName
+        dl = Remark.caller_loc.get(r.Function)
+        if dl:
+            link = Remark.make_link(dl['File'], dl['Line'] - 2)
+            inlining_context = "<a href={link}>{r.DemangledFunctionName}</a>".format(**locals())
+
+        # Column is the number of characters *including* tabs, keep those and
+        # replace everything else with spaces.
+        indent = line[:r.Column - 1]
+        indent = re.sub('\S', ' ', indent)
         print('''
 <tr>
 <td></td>
 <td>{r.RelativeHotness}%</td>
 <td class=\"column-entry-{r.color}\">{r.Pass}</td>
-<td class=\"column-entry-yellow\">{r.message}</td>
+<td><pre style="display:inline">{indent}</pre><span class=\"column-entry-yellow\"> {r.message}&nbsp;</span></td>
+<td class=\"column-entry-yellow\">{inlining_context}</td>
 </tr>'''.format(**locals()), file=self.stream)
 
     def render(self, line_remarks):
+        if not self.source_stream:
+            return
+
         print('''
 <html>
 <head>
@@ -147,11 +188,12 @@ class SourceFileRenderer:
 <td>Hotness</td>
 <td>Optimization</td>
 <td>Source</td>
+<td>Inline Context</td>
 </tr>''', file=self.stream)
         for (linenum, line) in enumerate(self.source_stream.readlines(), start=1):
             self.render_source_line(linenum, line)
             for remark in line_remarks.get(linenum, []):
-                self.render_inline_remarks(remark)
+                self.render_inline_remarks(remark, line)
         print('''
 </table>
 </body>
@@ -213,6 +255,14 @@ for input_file in args.yaml_files:
             file_remarks.setdefault(remark.File, dict()).setdefault(remark.Line, []).append(remark);
 
             Remark.max_hotness = max(Remark.max_hotness, remark.Hotness)
+
+# Set up a map between function names and their source location for function where inlining happened
+for remark in all_remarks.itervalues():
+    if type(remark) == Passed and remark.Pass == "inline" and remark.Name == "Inlined":
+        for arg in remark.Args:
+            caller = arg.get('Caller')
+            if caller:
+                    Remark.caller_loc[caller] = arg['DebugLoc']
 
 sorted_remarks = sorted(all_remarks.itervalues(), key=lambda r: r.Hotness, reverse=True)
 
