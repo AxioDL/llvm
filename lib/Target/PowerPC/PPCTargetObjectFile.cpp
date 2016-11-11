@@ -80,13 +80,6 @@ static bool isInSmallSection(uint64_t Size) {
 bool PPCEmbeddedTargetObjectFile::
 isGlobalInSmallSectionKind(const GlobalObject *GO,
                            const TargetMachine &TM) const {
-  const PPCSubtarget &Subtarget =
-      *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
-
-  // Return if small section is not used in subtarget.
-  if (!Subtarget.getTargetTriple().isEABI())
-    return false;
-
   // Only global variables, not functions.
   const GlobalVariable *GVA = dyn_cast<GlobalVariable>(GO);
   if (!GVA)
@@ -103,33 +96,23 @@ Initialize(MCContext &Ctx, const TargetMachine &TM) {
   TargetLoweringObjectFileELF::Initialize(Ctx, TM);
   InitializeELF(TM.Options.UseInitArray);
 
-  const PPCSubtarget &Subtarget =
-      *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
-
-  if (Subtarget.getTargetTriple().isEABI()) {
-    SmallDataSection = getContext().getELFSection(
-        ".sdata", ELF::SHT_PROGBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
-    SmallData2Section = getContext().getELFSection(
-        ".sdata2", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
-    SmallBssSection = getContext().getELFSection(
-        ".sbss", ELF::SHT_NOBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
-  }
+  SmallDataSection = getContext().getELFSection(
+      ".sdata", ELF::SHT_PROGBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
+  SmallData2Section = getContext().getELFSection(
+      ".sdata2", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+  SmallBssSection = getContext().getELFSection(
+      ".sbss", ELF::SHT_NOBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
 }
 
 MCSection *PPCEmbeddedTargetObjectFile::SelectSectionForGlobal(
     const GlobalObject *GO, SectionKind Kind, const TargetMachine &TM) const {
-  const PPCSubtarget &Subtarget =
-      *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
-
   // Handle Small Section classification here.
-  if (Subtarget.getTargetTriple().isEABI()) {
-    if (Kind.isSmallBSS())
-      return SmallBssSection;
-    if (Kind.isSmallReadOnly())
-      return SmallData2Section;
-    if (Kind.isSmallKind())
-      return SmallDataSection;
-  }
+  if (Kind.isSmallBSS())
+    return SmallBssSection;
+  if (Kind.isSmallReadOnly())
+    return SmallData2Section;
+  if (Kind.isSmallKind())
+    return SmallDataSection;
 
   return TargetLoweringObjectFileELF::SelectSectionForGlobal(GO, Kind, TM);
 }
