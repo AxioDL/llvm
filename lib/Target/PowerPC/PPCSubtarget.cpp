@@ -106,7 +106,6 @@ void PPCSubtarget::initializeEnvironment() {
   HasFloat128 = false;
   IsISA3_0 = false;
   UseLongCalls = false;
-  UseEABISmallDataSections = false;
 
   HasPOPCNTD = POPCNTD_Unavailable;
 }
@@ -146,9 +145,6 @@ void PPCSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
   // Determine endianness.
   // FIXME: Part of the TargetMachine.
   IsLittleEndian = (TargetTriple.getArch() == Triple::ppc64le);
-
-  // If EABI, enable small data sections
-  UseEABISmallDataSections = TargetTriple.isEABI();
 }
 
 /// Return true if accesses to the specified global have to go through a dyld

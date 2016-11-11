@@ -133,7 +133,6 @@ protected:
   bool HasFloat128;
   bool IsISA3_0;
   bool UseLongCalls;
-  bool UseEABISmallDataSections;
 
   POPCNTDKind HasPOPCNTD;
 
@@ -278,7 +277,6 @@ public:
   bool hasFloat128() const { return HasFloat128; }
   bool isISA3_0() const { return IsISA3_0; }
   bool useLongCalls() const { return UseLongCalls; }
-  bool useEABISmallDataSections() const { return UseEABISmallDataSections; }
   bool needsSwapsForVSXMemOps() const {
     return hasVSX() && isLittleEndian() && !hasP9Vector();
   }

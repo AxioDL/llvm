@@ -1901,7 +1901,7 @@ bool PPCTargetLowering::SelectAddressRegImm(SDValue N, SDValue &Disp,
       Base = N.getOperand(0);
 
       // Apply EABI small data relocation if eligible
-      if (Subtarget.useEABISmallDataSections()) {
+      if (Subtarget.getTargetTriple().isEABI()) {
         if (GlobalAddressSDNode *GSDN =
             dyn_cast<GlobalAddressSDNode>(Disp.getNode())) {
           const GlobalValue *GV = GSDN->getGlobal();

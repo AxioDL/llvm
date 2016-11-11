@@ -84,7 +84,7 @@ isGlobalInSmallSectionKind(const GlobalObject *GO,
       *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
 
   // Return if small section is not used in subtarget.
-  if (!Subtarget.useEABISmallDataSections())
+  if (!Subtarget.getTargetTriple().isEABI())
     return false;
 
   // Only global variables, not functions.
@@ -106,7 +106,7 @@ Initialize(MCContext &Ctx, const TargetMachine &TM) {
   const PPCSubtarget &Subtarget =
       *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
 
-  if (Subtarget.useEABISmallDataSections()) {
+  if (Subtarget.getTargetTriple().isEABI()) {
     SmallDataSection = getContext().getELFSection(
         ".sdata", ELF::SHT_PROGBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
     SmallData2Section = getContext().getELFSection(
@@ -122,7 +122,7 @@ MCSection *PPCEmbeddedTargetObjectFile::SelectSectionForGlobal(
       *static_cast<const PPCTargetMachine &>(TM).getSubtargetImpl();
 
   // Handle Small Section classification here.
-  if (Subtarget.useEABISmallDataSections()) {
+  if (Subtarget.getTargetTriple().isEABI()) {
     if (Kind.isSmallBSS())
       return SmallBssSection;
     if (Kind.isSmallReadOnly())
