@@ -257,6 +257,7 @@ bool LTOCodeGenerator::compileOptimizedToFile(const char **Name) {
   bool genResult = compileOptimized(&objFile.os());
   objFile.os().close();
   if (objFile.os().has_error()) {
+    emitError((Twine("could not write object file: ") + Filename).str());
     objFile.os().clear_error();
     sys::fs::remove(Twine(Filename));
     return false;

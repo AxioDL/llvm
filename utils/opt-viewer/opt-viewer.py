@@ -24,7 +24,7 @@ def demangle(name):
     return p.stdout.readline().rstrip()
 
 class Remark(yaml.YAMLObject):
-    max_hotness = 0
+    max_hotness = 1
 
     @property
     def File(self):
@@ -46,25 +46,45 @@ class Remark(yaml.YAMLObject):
     def DemangledFunctionName(self):
         return demangle(self.Function)
 
+    @classmethod
+    def make_link(cls, File, Line):
+        return "{}#L{}".format(SourceFileRenderer.html_file_name(File), Line)
+
     @property
     def Link(self):
-        return "{}#L{}".format(SourceFileRenderer.html_file_name(self.File), self.Line)
+        return Remark.make_link(self.File, self.Line)
 
-    def getArgString(self, pair):
-        if pair[0] == 'Callee' or pair[0] == 'Caller':
-            return demangle(pair[1])
-        return pair[1]
+    def getArgString(self, mapping):
+        mapping = mapping.copy()
+        dl = mapping.get('DebugLoc')
+        if dl:
+            del mapping['DebugLoc']
+
+        assert(len(mapping) == 1)
+        (key, value) = mapping.items()[0]
+
+        if key == 'Caller' or key == 'Callee':
+            value = demangle(value)
+
+        if dl and key != 'Caller':
+            return "<a href={}>{}</a>".format(
+                Remark.make_link(dl['File'], dl['Line']), value)
+        else:
+            return value
 
     @property
     def message(self):
-        # Args is a list of mappings (dictionaries) with each dictionary with
-        # exactly one key-value pair.
-        values = [self.getArgString(mapping.items()[0]) for mapping in self.Args]
+        # Args is a list of mappings (dictionaries)
+        values = [self.getArgString(mapping) for mapping in self.Args]
         return "".join(values)
 
     @property
     def RelativeHotness(self):
         return int(round(self.Hotness * 100 / Remark.max_hotness))
+
+    @property
+    def key(self):
+        return (self.__class__, self.Pass, self.Name, self.File, self.Line, self.Column, self.message)
 
 class Analysis(Remark):
     yaml_tag = '!Analysis'
@@ -177,7 +197,7 @@ class IndexRenderer:
 </html>''', file=self.stream)
 
 
-all_remarks = []
+all_remarks = dict()
 file_remarks  = dict()
 
 for input_file in args.yaml_files:
@@ -185,11 +205,16 @@ for input_file in args.yaml_files:
     docs = yaml.load_all(f)
     for remark in docs:
         if hasattr(remark, 'Hotness'):
+            # Avoid duplicated remarks
+            if remark.key in all_remarks:
+                continue
+            all_remarks[remark.key] = remark
+
             file_remarks.setdefault(remark.File, dict()).setdefault(remark.Line, []).append(remark);
-            all_remarks.append(remark)
+
             Remark.max_hotness = max(Remark.max_hotness, remark.Hotness)
 
-all_remarks = sorted(all_remarks, key=lambda r: r.Hotness, reverse=True)
+sorted_remarks = sorted(all_remarks.itervalues(), key=lambda r: r.Hotness, reverse=True)
 
 if not os.path.exists(args.output_dir):
     os.mkdir(args.output_dir)
@@ -197,6 +222,6 @@ if not os.path.exists(args.output_dir):
 for (filename, remarks) in file_remarks.iteritems():
     SourceFileRenderer(filename).render(remarks)
 
-IndexRenderer().render(all_remarks)
+IndexRenderer().render(sorted_remarks)
 
 shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "style.css"), args.output_dir)

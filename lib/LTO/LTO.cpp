@@ -105,9 +105,8 @@ llvm::loadModuleFromBuffer(const MemoryBufferRef &Buffer, LLVMContext &Context,
   SMDiagnostic Err;
   ErrorOr<std::unique_ptr<Module>> ModuleOrErr(nullptr);
   if (Lazy) {
-    ModuleOrErr =
-        getLazyBitcodeModule(MemoryBuffer::getMemBuffer(Buffer, false), Context,
-                             /* ShouldLazyLoadMetadata */ Lazy);
+    ModuleOrErr = getLazyBitcodeModule(Buffer, Context,
+                                       /* ShouldLazyLoadMetadata */ Lazy);
   } else {
     ModuleOrErr = parseBitcodeFile(Buffer, Context);
   }
@@ -351,7 +350,8 @@ Error LTO::addRegularLTO(std::unique_ptr<InputFile> Input,
   std::unique_ptr<object::IRObjectFile> Obj = std::move(*ObjOrErr);
 
   Module &M = Obj->getModule();
-  M.materializeMetadata();
+  if (Error Err = M.materializeMetadata())
+    return Err;
   UpgradeDebugInfo(M);
 
   SmallPtrSet<GlobalValue *, 8> Used;
