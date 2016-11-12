@@ -173,7 +173,8 @@ public:
     WatchOS,    // Apple watchOS
     Mesa3D,
     Contiki,
-    LastOSType = Contiki
+    Hanafuda,
+    LastOSType = Hanafuda
   };
   enum EnvironmentType {
     UnknownEnvironment,
