@@ -269,6 +269,11 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     }
   }
 
+  if (Subtarget.isEABI()) {
+    Reserved.set(PPC::R13);
+    Reserved.set(PPC::R2);
+  }
+
   if (TFI->needsFP(MF))
     Reserved.set(PPC::R31);
 

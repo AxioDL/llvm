@@ -2957,6 +2957,7 @@ def : Pat<(fcopysign f64:$frB, f32:$frA),
 def : Pat<(fcopysign f32:$frB, f64:$frA),
           (FCPSGNS (COPY_TO_REGCLASS $frA, F4RC), $frB)>;
 
+include "PPCInstrPaired.td"
 include "PPCInstrAltivec.td"
 include "PPCInstrSPE.td"
 include "PPCInstr64Bit.td"

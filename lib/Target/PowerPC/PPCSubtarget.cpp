@@ -63,6 +63,7 @@ void PPCSubtarget::initializeEnvironment() {
   Use64BitRegs = false;
   UseCRBits = false;
   HasHardFloat = false;
+  HasPaired = false;
   HasAltivec = false;
   HasSPE = false;
   HasQPX = false;

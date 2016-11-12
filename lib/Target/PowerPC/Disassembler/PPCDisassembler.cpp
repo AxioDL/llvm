@@ -435,6 +435,13 @@ DecodeStatus PPCDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
       return result;
   }
 
+  if (STI.getFeatureBits()[PPC::FeaturePaired]) {
+    DecodeStatus result =
+      decodeInstruction(DecoderTablePaired32, MI, Inst, Address, this, STI);
+    if (result != MCDisassembler::Fail)
+      return result;
+  }
+
   return decodeInstruction(DecoderTable32, MI, Inst, Address, this, STI);
 }
 
