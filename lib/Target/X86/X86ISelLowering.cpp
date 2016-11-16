@@ -1269,6 +1269,7 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::FP_TO_UINT,       MVT::v8i32, Legal);
       setOperationAction(ISD::SINT_TO_FP,       MVT::v4i32, Legal);
       setOperationAction(ISD::UINT_TO_FP,       MVT::v4i32, Legal);
+      setOperationAction(ISD::UINT_TO_FP,       MVT::v2i32, Custom);
       setOperationAction(ISD::FP_TO_SINT,       MVT::v4i32, Legal);
       setOperationAction(ISD::FP_TO_UINT,       MVT::v4i32, Legal);
       setOperationAction(ISD::ZERO_EXTEND,      MVT::v4i32, Custom);
@@ -7788,34 +7789,12 @@ static SDValue lowerVectorShuffleAsDecomposedShuffleBlend(const SDLoc &DL,
   return DAG.getVectorShuffle(VT, DL, V1, V2, BlendMask);
 }
 
-/// \brief Try to lower a vector shuffle as a byte rotation.
+/// \brief Try to lower a vector shuffle as a rotation.
 ///
-/// SSSE3 has a generic PALIGNR instruction in x86 that will do an arbitrary
-/// byte-rotation of the concatenation of two vectors; pre-SSSE3 can use
-/// a PSRLDQ/PSLLDQ/POR pattern to get a similar effect. This routine will
-/// try to generically lower a vector shuffle through such an pattern. It
-/// does not check for the profitability of lowering either as PALIGNR or
-/// PSRLDQ/PSLLDQ/POR, only whether the mask is valid to lower in that form.
-/// This matches shuffle vectors that look like:
-///
-///   v8i16 [11, 12, 13, 14, 15, 0, 1, 2]
-///
-/// Essentially it concatenates V1 and V2, shifts right by some number of
-/// elements, and takes the low elements as the result. Note that while this is
-/// specified as a *right shift* because x86 is little-endian, it is a *left
-/// rotate* of the vector lanes.
-static int matchVectorShuffleAsByteRotate(MVT VT, SDValue &V1, SDValue &V2,
-                                          ArrayRef<int> Mask) {
-  // Don't accept any shuffles with zero elements.
-  if (any_of(Mask, [](int M) { return M == SM_SentinelZero; }))
-    return -1;
-
-  // PALIGNR works on 128-bit lanes.
-  SmallVector<int, 16> RepeatedMask;
-  if (!is128BitLaneRepeatedShuffleMask(VT, Mask, RepeatedMask))
-    return -1;
-
-  int NumElts = RepeatedMask.size();
+/// This is used for support PALIGNR for SSSE3 or VALIGND/Q for AVX512.
+static int matchVectorShuffleAsRotate(SDValue &V1, SDValue &V2,
+                                      ArrayRef<int> Mask) {
+  int NumElts = Mask.size();
 
   // We need to detect various ways of spelling a rotation:
   //   [11, 12, 13, 14, 15,  0,  1,  2]
@@ -7827,7 +7806,7 @@ static int matchVectorShuffleAsByteRotate(MVT VT, SDValue &V1, SDValue &V2,
   int Rotation = 0;
   SDValue Lo, Hi;
   for (int i = 0; i < NumElts; ++i) {
-    int M = RepeatedMask[i];
+    int M = Mask[i];
     assert((M == SM_SentinelUndef || (0 <= M && M < (2*NumElts))) &&
            "Unexpected mask index.");
     if (M < 0)
@@ -7879,8 +7858,43 @@ static int matchVectorShuffleAsByteRotate(MVT VT, SDValue &V1, SDValue &V2,
   V1 = Lo;
   V2 = Hi;
 
+  return Rotation;
+}
+
+/// \brief Try to lower a vector shuffle as a byte rotation.
+///
+/// SSSE3 has a generic PALIGNR instruction in x86 that will do an arbitrary
+/// byte-rotation of the concatenation of two vectors; pre-SSSE3 can use
+/// a PSRLDQ/PSLLDQ/POR pattern to get a similar effect. This routine will
+/// try to generically lower a vector shuffle through such an pattern. It
+/// does not check for the profitability of lowering either as PALIGNR or
+/// PSRLDQ/PSLLDQ/POR, only whether the mask is valid to lower in that form.
+/// This matches shuffle vectors that look like:
+///
+///   v8i16 [11, 12, 13, 14, 15, 0, 1, 2]
+///
+/// Essentially it concatenates V1 and V2, shifts right by some number of
+/// elements, and takes the low elements as the result. Note that while this is
+/// specified as a *right shift* because x86 is little-endian, it is a *left
+/// rotate* of the vector lanes.
+static int matchVectorShuffleAsByteRotate(MVT VT, SDValue &V1, SDValue &V2,
+                                          ArrayRef<int> Mask) {
+  // Don't accept any shuffles with zero elements.
+  if (any_of(Mask, [](int M) { return M == SM_SentinelZero; }))
+    return -1;
+
+  // PALIGNR works on 128-bit lanes.
+  SmallVector<int, 16> RepeatedMask;
+  if (!is128BitLaneRepeatedShuffleMask(VT, Mask, RepeatedMask))
+    return -1;
+
+  int Rotation = matchVectorShuffleAsRotate(V1, V2, RepeatedMask);
+  if (Rotation <= 0)
+    return -1;
+
   // PALIGNR rotates bytes, so we need to scale the
   // rotation based on how many bytes are in the vector lane.
+  int NumElts = RepeatedMask.size();
   int Scale = 16 / NumElts;
   return Rotation * Scale;
 }
@@ -7929,6 +7943,37 @@ static SDValue lowerVectorShuffleAsByteRotate(const SDLoc &DL, MVT VT,
                                 DAG.getConstant(HiByteShift, DL, MVT::i8));
   return DAG.getBitcast(VT,
                         DAG.getNode(ISD::OR, DL, MVT::v16i8, LoShift, HiShift));
+}
+
+/// \brief Try to lower a vector shuffle as a dword/qword rotation.
+///
+/// AVX512 has a VALIGND/VALIGNQ instructions that will do an arbitrary
+/// rotation of the concatenation of two vectors; This routine will
+/// try to generically lower a vector shuffle through such an pattern.
+///
+/// Essentially it concatenates V1 and V2, shifts right by some number of
+/// elements, and takes the low elements as the result. Note that while this is
+/// specified as a *right shift* because x86 is little-endian, it is a *left
+/// rotate* of the vector lanes.
+static SDValue lowerVectorShuffleAsRotate(const SDLoc &DL, MVT VT,
+                                          SDValue V1, SDValue V2,
+                                          ArrayRef<int> Mask,
+                                          const X86Subtarget &Subtarget,
+                                          SelectionDAG &DAG) {
+  assert((VT.getScalarType() == MVT::i32 || VT.getScalarType() == MVT::i64) &&
+         "Only 32-bit and 64-bit elements are supported!");
+
+  // 128/256-bit vectors are only supported with VLX.
+  assert((Subtarget.hasVLX() || (!VT.is128BitVector() && !VT.is256BitVector()))
+         && "VLX required for 128/256-bit vectors");
+
+  SDValue Lo = V1, Hi = V2;
+  int Rotation = matchVectorShuffleAsRotate(Lo, Hi, Mask);
+  if (Rotation <= 0)
+    return SDValue();
+
+  return DAG.getNode(X86ISD::VALIGN, DL, VT, Lo, Hi,
+                     DAG.getConstant(Rotation, DL, MVT::i8));
 }
 
 /// \brief Try to lower a vector shuffle as a bit shift (shifts in zeros).
@@ -11505,6 +11550,13 @@ static SDValue lowerV4I64VectorShuffle(const SDLoc &DL, ArrayRef<int> Mask,
                                                 Zeroable, Subtarget, DAG))
     return Shift;
 
+  // If we have VLX support, we can use VALIGN.
+  if (Subtarget.hasVLX())
+    if (SDValue Rotate = lowerVectorShuffleAsRotate(DL, MVT::v4i64, V1, V2,
+                                                    Mask, Subtarget, DAG))
+      return Rotate;
+
+  // Try to use PALIGNR.
   if (SDValue Rotate = lowerVectorShuffleAsByteRotate(DL, MVT::v4i64, V1, V2,
                                                       Mask, Subtarget, DAG))
     return Rotate;
@@ -11665,6 +11717,12 @@ static SDValue lowerV8I32VectorShuffle(const SDLoc &DL, ArrayRef<int> Mask,
   if (SDValue Shift = lowerVectorShuffleAsShift(DL, MVT::v8i32, V1, V2, Mask,
                                                 Zeroable, Subtarget, DAG))
     return Shift;
+
+  // If we have VLX support, we can use VALIGN.
+  if (Subtarget.hasVLX())
+    if (SDValue Rotate = lowerVectorShuffleAsRotate(DL, MVT::v8i32, V1, V2,
+                                                    Mask, Subtarget, DAG))
+      return Rotate;
 
   // Try to use byte rotation instructions.
   if (SDValue Rotate = lowerVectorShuffleAsByteRotate(
@@ -12094,6 +12152,12 @@ static SDValue lowerV8I64VectorShuffle(const SDLoc &DL, ArrayRef<int> Mask,
                                                 Zeroable, Subtarget, DAG))
     return Shift;
 
+  // Try to use VALIGN.
+  if (SDValue Rotate = lowerVectorShuffleAsRotate(DL, MVT::v8i64, V1, V2,
+                                                  Mask, Subtarget, DAG))
+    return Rotate;
+
+  // Try to use PALIGNR.
   if (SDValue Rotate = lowerVectorShuffleAsByteRotate(DL, MVT::v8i64, V1, V2,
                                                       Mask, Subtarget, DAG))
     return Rotate;
@@ -12142,6 +12206,11 @@ static SDValue lowerV16I32VectorShuffle(const SDLoc &DL, ArrayRef<int> Mask,
   if (SDValue Shift = lowerVectorShuffleAsShift(DL, MVT::v16i32, V1, V2, Mask,
                                                 Zeroable, Subtarget, DAG))
     return Shift;
+
+  // Try to use VALIGN.
+  if (SDValue Rotate = lowerVectorShuffleAsRotate(DL, MVT::v16i32, V1, V2,
+                                                  Mask, Subtarget, DAG))
+    return Rotate;
 
   // Try to use byte rotation instructions.
   if (Subtarget.hasBWI())
@@ -13960,26 +14029,34 @@ static SDValue lowerUINT_TO_FP_vXi32(SDValue Op, SelectionDAG &DAG,
 SDValue X86TargetLowering::lowerUINT_TO_FP_vec(SDValue Op,
                                                SelectionDAG &DAG) const {
   SDValue N0 = Op.getOperand(0);
-  MVT SVT = N0.getSimpleValueType();
+  MVT VT = Op.getSimpleValueType();
+  MVT SrcVT = N0.getSimpleValueType();
   SDLoc dl(Op);
 
-  if (SVT.getVectorElementType() == MVT::i1) {
-    if (SVT == MVT::v2i1)
+  if (SrcVT.getVectorElementType() == MVT::i1) {
+    if (SrcVT == MVT::v2i1)
       return DAG.getNode(ISD::UINT_TO_FP, dl, Op.getValueType(),
                          DAG.getNode(ISD::ZERO_EXTEND, dl, MVT::v2i64, N0));
-    MVT IntegerVT = MVT::getVectorVT(MVT::i32, SVT.getVectorNumElements());
+    MVT IntegerVT = MVT::getVectorVT(MVT::i32, SrcVT.getVectorNumElements());
     return DAG.getNode(ISD::UINT_TO_FP, dl, Op.getValueType(),
                        DAG.getNode(ISD::ZERO_EXTEND, dl, IntegerVT, N0));
   }
 
-  switch (SVT.SimpleTy) {
+  switch (SrcVT.SimpleTy) {
   default:
     llvm_unreachable("Custom UINT_TO_FP is not supported!");
+  case MVT::v2i32: {
+    if (VT == MVT::v2f64)
+      return DAG.getNode(X86ISD::CVTUDQ2PD, dl, VT,
+                         DAG.getNode(ISD::CONCAT_VECTORS, dl, MVT::v4i32, N0,
+                         DAG.getUNDEF(SrcVT)));
+    return SDValue();
+  }
   case MVT::v4i8:
   case MVT::v4i16:
   case MVT::v8i8:
   case MVT::v8i16: {
-    MVT NVT = MVT::getVectorVT(MVT::i32, SVT.getVectorNumElements());
+    MVT NVT = MVT::getVectorVT(MVT::i32, SrcVT.getVectorNumElements());
     return DAG.getNode(ISD::SINT_TO_FP, dl, Op.getValueType(),
                        DAG.getNode(ISD::ZERO_EXTEND, dl, NVT, N0));
   }
@@ -30845,7 +30922,7 @@ static SDValue combineFneg(SDNode *N, SelectionDAG &DAG,
 }
 
 static SDValue lowerX86FPLogicOp(SDNode *N, SelectionDAG &DAG,
-                              const X86Subtarget &Subtarget) {
+                                 const X86Subtarget &Subtarget) {
   EVT VT = N->getValueType(0);
   if (VT.is512BitVector() && !Subtarget.hasDQI()) {
     // VXORPS, VORPS, VANDPS, VANDNPS are supported only under DQ extention.
@@ -31684,9 +31761,12 @@ static SDValue combineSIntToFP(SDNode *N, SelectionDAG &DAG,
   EVT InVT = Op0.getValueType();
   EVT InSVT = InVT.getScalarType();
 
+  // SINT_TO_FP(vXi1) -> SINT_TO_FP(SEXT(vXi1 to vXi32))
   // SINT_TO_FP(vXi8) -> SINT_TO_FP(SEXT(vXi8 to vXi32))
   // SINT_TO_FP(vXi16) -> SINT_TO_FP(SEXT(vXi16 to vXi32))
-  if (InVT.isVector() && (InSVT == MVT::i8 || InSVT == MVT::i16)) {
+  if (InVT.isVector() &&
+      (InSVT == MVT::i8 || InSVT == MVT::i16 ||
+       (InSVT == MVT::i1 && !DAG.getTargetLoweringInfo().isTypeLegal(InVT)))) {
     SDLoc dl(N);
     EVT DstVT = EVT::getVectorVT(*DAG.getContext(), MVT::i32,
                                  InVT.getVectorNumElements());

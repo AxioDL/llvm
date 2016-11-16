@@ -5,9 +5,16 @@ from __future__ import print_function
 desc = '''Generate HTML output to visualize optimization records from the YAML files
 generated with -fsave-optimization-record and -fdiagnostics-show-hotness.
 
-The tools requires PyYAML and Pygments Python packages.'''
+The tools requires PyYAML and Pygments Python packages.
+
+For faster parsing, you may want to use libYAML with PyYAML.'''
 
 import yaml
+# Try to use the C parser.
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 import argparse
 import os.path
 import re
@@ -24,14 +31,33 @@ parser.add_argument('-source-dir', '-s', default='', help='set source directory'
 args = parser.parse_args()
 
 p = subprocess.Popen(['c++filt', '-n'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+
 def demangle(name):
     p.stdin.write(name + '\n')
     return p.stdout.readline().rstrip()
 
+
 class Remark(yaml.YAMLObject):
-    max_hotness = 1
+    max_hotness = 0
+
+    # Work-around for http://pyyaml.org/ticket/154.
+    yaml_loader = Loader
+
+    @classmethod
+    def should_display_hotness(cls):
+        # If max_hotness is 0 at the end, we assume hotness information is
+        # missing and no relative hotness information is displayed
+        return cls.max_hotness != 0
+
     # Map function names to their source location for function where inlining happened
     caller_loc = dict()
+
+    def __getattr__(self, name):
+        # If hotness is missing, assume 0
+        if name == 'Hotness':
+            return 0
+        raise AttributeError
 
     @property
     def File(self):
@@ -87,35 +113,47 @@ class Remark(yaml.YAMLObject):
 
     @property
     def RelativeHotness(self):
-        return int(round(self.Hotness * 100 / Remark.max_hotness))
+        if Remark.should_display_hotness():
+            return "{}%".format(int(round(self.Hotness * 100 / Remark.max_hotness)))
+        else:
+            return ''
 
     @property
     def key(self):
         return (self.__class__, self.Pass, self.Name, self.File, self.Line, self.Column, self.message)
 
+
 class Analysis(Remark):
     yaml_tag = '!Analysis'
 
     @property
-    def color(self): return "white"
+    def color(self):
+        return "white"
+
 
 class AnalysisFPCommute(Analysis):
     yaml_tag = '!AnalysisFPCommute'
 
+
 class AnalysisAliasing(Analysis):
     yaml_tag = '!AnalysisAliasing'
+
 
 class Passed(Remark):
     yaml_tag = '!Passed'
 
     @property
-    def color(self): return "green"
+    def color(self):
+        return "green"
+
 
 class Missed(Remark):
     yaml_tag = '!Missed'
 
     @property
-    def color(self): return "red"
+    def color(self):
+        return "red"
+
 
 class SourceFileRenderer:
     def __init__(self, filename):
@@ -165,7 +203,7 @@ class SourceFileRenderer:
         print('''
 <tr>
 <td></td>
-<td>{r.RelativeHotness}%</td>
+<td>{r.RelativeHotness}</td>
 <td class=\"column-entry-{r.color}\">{r.Pass}</td>
 <td><pre style="display:inline">{indent}</pre><span class=\"column-entry-yellow\"> {r.message}&nbsp;</span></td>
 <td class=\"column-entry-yellow\">{inlining_context}</td>
@@ -203,6 +241,7 @@ class SourceFileRenderer:
     def html_file_name(cls, filename):
         return filename.replace('/', '_') + ".html"
 
+
 class IndexRenderer:
     def __init__(self):
         self.stream = open(os.path.join(args.output_dir, 'index.html'), 'w')
@@ -211,7 +250,7 @@ class IndexRenderer:
         print('''
 <tr>
 <td><a href={r.Link}>{r.DebugLocString}</a></td>
-<td>{r.RelativeHotness}%</td>
+<td>{r.RelativeHotness}</td>
 <td>{r.DemangledFunctionName}</td>
 <td class=\"column-entry-{r.color}\">{r.Pass}</td>
 </tr>'''.format(**locals()), file=self.stream)
@@ -240,21 +279,20 @@ class IndexRenderer:
 
 
 all_remarks = dict()
-file_remarks  = dict()
+file_remarks = dict()
 
 for input_file in args.yaml_files:
     f = open(input_file)
-    docs = yaml.load_all(f)
+    docs = yaml.load_all(f, Loader=Loader)
     for remark in docs:
-        if hasattr(remark, 'Hotness'):
-            # Avoid duplicated remarks
-            if remark.key in all_remarks:
-                continue
-            all_remarks[remark.key] = remark
+        # Avoid remarks withoug debug location or if they are duplicated
+        if not hasattr(remark, 'DebugLoc') or remark.key in all_remarks:
+            continue
+        all_remarks[remark.key] = remark
 
-            file_remarks.setdefault(remark.File, dict()).setdefault(remark.Line, []).append(remark);
+        file_remarks.setdefault(remark.File, dict()).setdefault(remark.Line, []).append(remark)
 
-            Remark.max_hotness = max(Remark.max_hotness, remark.Hotness)
+        Remark.max_hotness = max(Remark.max_hotness, remark.Hotness)
 
 # Set up a map between function names and their source location for function where inlining happened
 for remark in all_remarks.itervalues():
@@ -264,7 +302,10 @@ for remark in all_remarks.itervalues():
             if caller:
                     Remark.caller_loc[caller] = arg['DebugLoc']
 
-sorted_remarks = sorted(all_remarks.itervalues(), key=lambda r: r.Hotness, reverse=True)
+if Remark.should_display_hotness():
+    sorted_remarks = sorted(all_remarks.itervalues(), key=lambda r: r.Hotness, reverse=True)
+else:
+    sorted_remarks = sorted(all_remarks.itervalues(), key=lambda r: (r.File, r.Line, r.Column))
 
 if not os.path.exists(args.output_dir):
     os.mkdir(args.output_dir)
