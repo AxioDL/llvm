@@ -7,6 +7,8 @@
 foo:
 	bl printf@plt
 	bl printf
+	beq printf
+	beqa printf
 	bl _GLOBAL_OFFSET_TABLE_@local-4
 	lwz 4, smallval@sdarx(13)
 	lis 5, .LC1@ha
@@ -25,13 +27,15 @@ smallval:
 # CHECK-NEXT:   Section {{.*}} .rela.text {
 # CHECK-NEXT:     0x0 R_PPC_PLTREL24 printf 0x0
 # CHECK-NEXT:     0x4 R_PPC_REL24 printf 0x0
-# CHECK-NEXT:     0x8 R_PPC_LOCAL24PC _GLOBAL_OFFSET_TABLE_ 0xFFFFFFFC
-# CHECK-NEXT:     0xD R_PPC_EMB_SDA21 smallval 0x0
-# CHECK-NEXT:     0x12 R_PPC_ADDR16_HA .text 0x18
-# CHECK-NEXT:     0x16 R_PPC_ADDR16_LO .text 0x18
+# CHECK-NEXT:     0x8 R_PPC_REL14 printf 0x0
+# CHECK-NEXT:     0xC R_PPC_ADDR14 printf 0x0
+# CHECK-NEXT:     0x10 R_PPC_LOCAL24PC _GLOBAL_OFFSET_TABLE_ 0xFFFFFFFC
+# CHECK-NEXT:     0x15 R_PPC_EMB_SDA21 smallval 0x0
+# CHECK-NEXT:     0x1A R_PPC_ADDR16_HA .text 0x20
+# CHECK-NEXT:     0x1E R_PPC_ADDR16_LO .text 0x20
 # CHECK-NEXT:   }
 # CHECK-NEXT:   Section {{.*}} .rela.sdata {
 # CHECK-NEXT:     0x4 R_PPC_ADDR32 foo 0x0
-# CHECK-NEXT:     0x8 R_PPC_REL32 .text 0x18
+# CHECK-NEXT:     0x8 R_PPC_REL32 .text 0x20
 # CHECK-NEXT:   }
 # CHECK-NEXT: ]
