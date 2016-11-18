@@ -272,6 +272,9 @@ public:
     if ((hasQPX() || isBGQ()) && !isQPXStackUnaligned())
       return 32;
 
+    if (isEABI())
+      return 8;
+
     return 16;
   }
   bool hasHTM() const { return HasHTM; }
@@ -293,11 +296,6 @@ public:
   bool isBGQ() const { return TargetTriple.getVendor() == Triple::BGQ; }
   /// isEABI - True if this is an EABI platform.
   bool isEABI() const { return TargetTriple.isEABI(); }
-
-  /// shouldStripRegisterPrefix - True if platform uses PPC assembler that
-  /// needs register prefixes stripped
-  bool shouldStripRegisterPrefix() const { return !isDarwin() &&
-                                                  !isEABI(); }
 
   bool isTargetELF() const { return TargetTriple.isOSBinFormatELF(); }
   bool isTargetMachO() const { return TargetTriple.isOSBinFormatMachO(); }

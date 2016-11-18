@@ -186,7 +186,7 @@ void PPCAsmPrinter::printOperand(const MachineInstr *MI, unsigned OpNo,
 
     // Linux assembler (Others?) does not take register mnemonics.
     // FIXME - What about special registers used in mfspr/mtspr?
-    if (Subtarget->shouldStripRegisterPrefix())
+    if (!Subtarget->isDarwin())
       RegName = stripRegisterPrefix(RegName);
     O << RegName;
     return;
@@ -287,7 +287,7 @@ bool PPCAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
     case 'y': // A memory reference for an X-form instruction
       {
         const char *RegName = "r0";
-        if (Subtarget->shouldStripRegisterPrefix())
+        if (!Subtarget->isDarwin())
           RegName = stripRegisterPrefix(RegName);
         O << RegName << ", ";
         printOperand(MI, OpNo, O);

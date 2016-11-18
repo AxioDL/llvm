@@ -1991,7 +1991,7 @@ bool PPCAsmParser::ParseDirectiveLocalEntry(SMLoc L) {
   return false;
 }
 
-/// parseSSectionDirective
+/// ParseElfSSectionDirective
 ///  ::= .sbss
 ///  ::= .sdata
 ///  ::= .sdata2

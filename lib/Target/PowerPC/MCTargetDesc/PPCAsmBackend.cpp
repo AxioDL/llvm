@@ -235,7 +235,8 @@ MCAsmBackend *llvm::createPPCAsmBackend(const Target &T,
   if (TT.isOSDarwin())
     return new DarwinPPCAsmBackend(T);
 
-  uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
+  uint8_t OSABI = TT.isEABI() ? ELF::ELFOSABI_STANDALONE :
+                  MCELFObjectTargetWriter::getOSABI(TT.getOS());
   bool IsLittleEndian = TT.getArch() == Triple::ppc64le;
   return new ELFPPCAsmBackend(T, IsLittleEndian, OSABI);
 }
