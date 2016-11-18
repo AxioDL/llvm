@@ -10,7 +10,7 @@ foo:
 	beq printf
 	beqa printf
 	bl _GLOBAL_OFFSET_TABLE_@local-4
-	lwz 4, smallval@sdarx(13)
+	lwz 4, smallval@sda21(13)
 	lis 5, .LC1@ha
 	addi 5, 5, .LC1@l
 .LC1:
