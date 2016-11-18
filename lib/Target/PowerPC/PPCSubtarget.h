@@ -270,6 +270,9 @@ public:
     if ((hasQPX() || isBGQ()) && !isQPXStackUnaligned())
       return 32;
 
+    if (isEABI())
+      return 8;
+
     return 16;
   }
   bool hasHTM() const { return HasHTM; }
