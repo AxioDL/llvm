@@ -106,6 +106,9 @@ public:
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override {
+    verifyInstructionPredicates(MI,
+                                computeAvailableFeatures(STI.getFeatureBits()));
+
     unsigned Opcode = MI.getOpcode();
     const MCInstrDesc &Desc = MCII.get(Opcode);
 
@@ -140,6 +143,10 @@ public:
     ++MCNumEmitted;  // Keep track of the # of mi's emitted.
   }
 
+private:
+  uint64_t computeAvailableFeatures(const FeatureBitset &FB) const;
+  void verifyInstructionPredicates(const MCInst &MI,
+                                   uint64_t AvailableFeatures) const;
 };
 
 } // end anonymous namespace
@@ -387,4 +394,6 @@ getMachineOpValue(const MCInst &MI, const MCOperand &MO,
 }
 
 
+
+#define ENABLE_INSTR_PREDICATE_VERIFIER
 #include "PPCGenMCCodeEmitter.inc"
