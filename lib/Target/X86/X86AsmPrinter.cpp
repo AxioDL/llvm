@@ -558,7 +558,7 @@ MCSymbol *X86AsmPrinter::GetCPISymbol(unsigned CPID) const {
         MF->getConstantPool()->getConstants()[CPID];
     if (!CPE.isMachineConstantPoolEntry()) {
       const DataLayout &DL = MF->getDataLayout();
-      SectionKind Kind = CPE.getSectionKind(&DL);
+      SectionKind Kind = CPE.getSectionKind(&DL, TM);
       const Constant *C = CPE.Val.ConstVal;
       unsigned Align = CPE.Alignment;
       if (const MCSectionCOFF *S = dyn_cast<MCSectionCOFF>(

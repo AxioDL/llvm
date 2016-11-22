@@ -19,6 +19,11 @@ class MipsTargetMachine;
     MCSection *SmallBSSSection;
     const MipsTargetMachine *TM;
 
+    /// Return true if this constant should be placed into small data section.
+    bool isConstantInSmallSectionKind(const DataLayout &DL,
+                                      const Constant *CN) const override;
+
+    /// Return true if this global should be placed into small data section.
     bool isGlobalInSmallSectionKind(const GlobalObject *GO,
                                     const TargetMachine &TM) const override;
   public:
@@ -27,10 +32,6 @@ class MipsTargetMachine;
 
     MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
                                       const TargetMachine &TM) const override;
-
-    /// Return true if this constant should be placed into small data section.
-    bool isConstantInSmallSection(const DataLayout &DL, const Constant *CN,
-                                  const TargetMachine &TM) const;
 
     MCSection *getSectionForConstant(const DataLayout &DL, SectionKind Kind,
                                      const Constant *C,

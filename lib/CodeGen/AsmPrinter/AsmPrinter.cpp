@@ -1311,7 +1311,7 @@ void AsmPrinter::EmitConstantPool() {
     const MachineConstantPoolEntry &CPE = CP[i];
     unsigned Align = CPE.getAlignment();
 
-    SectionKind Kind = CPE.getSectionKind(&getDataLayout());
+    SectionKind Kind = CPE.getSectionKind(&getDataLayout(), TM);
 
     const Constant *C = nullptr;
     if (!CPE.isMachineConstantPoolEntry())

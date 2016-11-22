@@ -1,12 +1,14 @@
 ; RUN: llc -mtriple=powerpc-unknown-unknown-eabi -ppc-ssection-threshold=8 < %s | FileCheck %s -check-prefix=SMALL8
 ; RUN: llc -mtriple=powerpc-unknown-unknown-eabi -ppc-ssection-threshold=0 < %s | FileCheck %s -check-prefix=SMALL0
+; RUN: llc -mtriple=powerpc-unknown-unknown-eabi -ppc-ssection-threshold=8 < %s | FileCheck %s -check-prefix=SMALLRET8
+; RUN: llc -mtriple=powerpc-unknown-unknown-eabi -ppc-ssection-threshold=0 < %s | FileCheck %s -check-prefix=SMALLRET0
 
 @s1 = internal unnamed_addr global i32 8, align 4
 @s2 = internal unnamed_addr global i32 4, align 4
 @g1 = external global i32
 @c1 = external constant i32
 
-define void @foo() nounwind {
+define float @foo() nounwind {
 entry:
   %0 = load i32, i32* @s1, align 4
 ; SMALL8: lwz 3, s1@sda21(13)
@@ -32,9 +34,12 @@ entry:
   store i32 %add, i32* @g1, align 4
 ; SMALL8: stw 4, s2@sda21(13)
 ; SMALL8: stw 3, g1@sda21(13)
-; SMALL0: stw 4, s2@l(6)
+; SMALL0: stw 4, s2@l(7)
 ; SMALL0: stw 5, g1@l(3)
-  ret void
+  ret float 1.0
+; SMALLRET8: lfs 1, .LCPI0_0@sda21(2)
+; SMALLRET0: lis 6, .LCPI0_0@ha
+; SMALLRET0: lfs 1, .LCPI0_0@l(6)
 }
 
 declare void @foo1(i32)

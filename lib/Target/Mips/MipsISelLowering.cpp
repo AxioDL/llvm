@@ -1881,12 +1881,8 @@ lowerConstantPool(SDValue Op, SelectionDAG &DAG) const
   EVT Ty = Op.getValueType();
 
   if (!isPositionIndependent() && !ABI.IsN64()) {
-    const MipsTargetObjectFile *TLOF =
-        static_cast<const MipsTargetObjectFile *>(
-            getTargetMachine().getObjFileLowering());
-
-    if (TLOF->isConstantInSmallSection(DAG.getDataLayout(), N->getConstVal(),
-                                       getTargetMachine()))
+    if (TargetLoweringObjectFile::isConstantInSmallSection(
+          DAG.getDataLayout(), N->getConstVal(), getTargetMachine()))
       // %gp_rel relocation
       return getAddrGPRel(N, SDLoc(N), Ty, DAG);
 

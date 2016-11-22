@@ -89,6 +89,12 @@ public:
   static SectionKind getKindForGlobal(const GlobalObject *GO,
                                       const TargetMachine &TM);
 
+  /// Determine if constant is allocated in a subtarget small data
+  /// SectionKind.
+  static bool isConstantInSmallSection(const DataLayout &DL,
+                                       const Constant *C,
+                                       const TargetMachine &TM);
+
   /// Determine if global variable is allocated in a subtarget small data
   /// SectionKind.
   static bool isGlobalInSmallSection(const GlobalObject *GO,
@@ -195,9 +201,13 @@ protected:
   virtual MCSection *SelectSectionForGlobal(const GlobalObject *GO,
                                             SectionKind Kind,
                                             const TargetMachine &TM) const = 0;
+  virtual bool isConstantInSmallSectionKind(const DataLayout &DL,
+                                            const Constant *C) const {
+    return false;
+  }
   virtual bool isGlobalInSmallSectionKind(const GlobalObject *GO,
                                           const TargetMachine &TM) const {
-      return false;
+    return false;
   }
 };
 
