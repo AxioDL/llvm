@@ -1203,6 +1203,7 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
     setOperationAction(ISD::UINT_TO_FP,         MVT::v16i32, Legal);
     setOperationAction(ISD::UINT_TO_FP,         MVT::v8i32, Legal);
     setOperationAction(ISD::UINT_TO_FP,         MVT::v4i32, Legal);
+    setOperationAction(ISD::UINT_TO_FP,         MVT::v2i32, Custom);
     setOperationAction(ISD::UINT_TO_FP,         MVT::v16i8, Custom);
     setOperationAction(ISD::UINT_TO_FP,         MVT::v16i16, Custom);
     setOperationAction(ISD::SINT_TO_FP,         MVT::v16i1, Custom);
@@ -1269,8 +1270,6 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::FP_TO_SINT,       MVT::v8i32, Legal);
       setOperationAction(ISD::FP_TO_UINT,       MVT::v8i32, Legal);
       setOperationAction(ISD::SINT_TO_FP,       MVT::v4i32, Legal);
-      setOperationAction(ISD::UINT_TO_FP,       MVT::v4i32, Legal);
-      setOperationAction(ISD::UINT_TO_FP,       MVT::v2i32, Custom);
       setOperationAction(ISD::FP_TO_SINT,       MVT::v4i32, Legal);
       setOperationAction(ISD::FP_TO_UINT,       MVT::v4i32, Legal);
       setOperationAction(ISD::ZERO_EXTEND,      MVT::v4i32, Custom);
@@ -2414,7 +2413,7 @@ static SDValue getv64i1Argument(CCValAssign &VA, CCValAssign &NextVA,
   } else {
     // When a physical register is available read the value from it and glue
     // the reads together.
-    ArgValueLo = 
+    ArgValueLo =
       DAG.getCopyFromReg(Root, Dl, VA.getLocReg(), MVT::i32, *InFlag);
     *InFlag = ArgValueLo.getValue(2);
     ArgValueHi =
@@ -2816,6 +2815,8 @@ SDValue X86TargetLowering::LowerFormalArguments(
           RC = &X86::FR32RegClass;
         else if (RegVT == MVT::f64)
           RC = &X86::FR64RegClass;
+        else if (RegVT == MVT::f80)
+          RC = &X86::RFP80RegClass;
         else if (RegVT == MVT::f128)
           RC = &X86::FR128RegClass;
         else if (RegVT.is512BitVector())
@@ -7582,8 +7583,7 @@ static SmallBitVector computeZeroableShuffleElements(ArrayRef<int> Mask,
   return Zeroable;
 }
 
-/// Try to lower a shuffle with a single PSHUFB of V1.
-/// This is only possible if V2 is unused (at all, or only for zero elements).
+/// Try to lower a shuffle with a single PSHUFB of V1 or V2.
 static SDValue lowerVectorShuffleWithPSHUFB(const SDLoc &DL, MVT VT,
                                             ArrayRef<int> Mask, SDValue V1,
                                             SDValue V2,
@@ -7603,6 +7603,7 @@ static SDValue lowerVectorShuffleWithPSHUFB(const SDLoc &DL, MVT VT,
   // Sign bit set in i8 mask means zero element.
   SDValue ZeroMask = DAG.getConstant(0x80, DL, MVT::i8);
 
+  SDValue V;
   for (int i = 0; i < NumBytes; ++i) {
     int M = Mask[i / NumEltBytes];
     if (M < 0) {
@@ -7613,9 +7614,13 @@ static SDValue lowerVectorShuffleWithPSHUFB(const SDLoc &DL, MVT VT,
       PSHUFBMask[i] = ZeroMask;
       continue;
     }
-    // Only allow V1.
-    if (M >= Size)
+
+    // We can only use a single input of V1 or V2.
+    SDValue SrcV = (M >= Size ? V2 : V1);
+    if (V && V != SrcV)
       return SDValue();
+    V = SrcV;
+    M %= Size;
 
     // PSHUFB can't cross lanes, ensure this doesn't happen.
     if ((M / LaneSize) != ((i / NumEltBytes) / LaneSize))
@@ -7625,10 +7630,11 @@ static SDValue lowerVectorShuffleWithPSHUFB(const SDLoc &DL, MVT VT,
     M = M * NumEltBytes + (i % NumEltBytes);
     PSHUFBMask[i] = DAG.getConstant(M, DL, MVT::i8);
   }
+  assert(V && "Failed to find a source input");
 
   MVT I8VT = MVT::getVectorVT(MVT::i8, NumBytes);
   return DAG.getBitcast(
-      VT, DAG.getNode(X86ISD::PSHUFB, DL, I8VT, DAG.getBitcast(I8VT, V1),
+      VT, DAG.getNode(X86ISD::PSHUFB, DL, I8VT, DAG.getBitcast(I8VT, V),
                       DAG.getBuildVector(I8VT, DL, PSHUFBMask)));
 }
 
@@ -11577,9 +11583,6 @@ static SDValue lowerVectorShuffleWithSHUFPD(const SDLoc &DL, MVT VT,
 static SDValue lowerVectorShuffleWithPERMV(const SDLoc &DL, MVT VT,
                                            ArrayRef<int> Mask, SDValue V1,
                                            SDValue V2, SelectionDAG &DAG) {
-
-  assert(VT.getScalarSizeInBits() >= 16 && "Unexpected data type for PERMV");
-
   MVT MaskEltVT = MVT::getIntegerVT(VT.getScalarSizeInBits());
   MVT MaskVecVT = MVT::getVectorVT(MaskEltVT, VT.getVectorNumElements());
 
@@ -12492,6 +12495,10 @@ static SDValue lowerV64I8VectorShuffle(const SDLoc &DL, ArrayRef<int> Mask,
   if (SDValue PSHUFB = lowerVectorShuffleWithPSHUFB(
           DL, MVT::v64i8, Mask, V1, V2, Zeroable, Subtarget, DAG))
     return PSHUFB;
+
+  // VBMI can use VPERMV/VPERMV3 byte shuffles.
+  if (Subtarget.hasVBMI())
+    return lowerVectorShuffleWithPERMV(DL, MVT::v64i8, Mask, V1, V2, DAG);
 
   // FIXME: Implement direct support for this type!
   return splitAndLowerVectorShuffle(DL, MVT::v64i8, V1, V2, Mask, DAG);
@@ -14657,8 +14664,8 @@ static SDValue truncateVectorCompareWithPACKSS(EVT DstVT, SDValue In,
                                                const SDLoc &DL,
                                                SelectionDAG &DAG,
                                                const X86Subtarget &Subtarget) {
-  // AVX512 has fast truncate.
-  if (Subtarget.hasAVX512())
+  // Requires SSE2 but AVX512 has fast truncate.
+  if (!Subtarget.hasSSE2() || Subtarget.hasAVX512())
     return SDValue();
 
   EVT SrcVT = In.getValueType();
@@ -25952,7 +25959,9 @@ static bool combineX86ShuffleChain(ArrayRef<SDValue> Inputs, SDValue Root,
           (MaskVT == MVT::v8f64 || MaskVT == MVT::v8i64 ||
            MaskVT == MVT::v16f32 || MaskVT == MVT::v16i32)) ||
          (Subtarget.hasBWI() && MaskVT == MVT::v32i16) ||
-         (Subtarget.hasBWI() && Subtarget.hasVLX() && MaskVT == MVT::v16i16))) {
+         (Subtarget.hasBWI() && Subtarget.hasVLX() && MaskVT == MVT::v16i16) ||
+         (Subtarget.hasVBMI() && MaskVT == MVT::v64i8) ||
+         (Subtarget.hasVBMI() && Subtarget.hasVLX() && MaskVT == MVT::v32i8))) {
       MVT VPermMaskSVT = MVT::getIntegerVT(MaskEltSizeInBits);
       MVT VPermMaskVT = MVT::getVectorVT(VPermMaskSVT, NumMaskElts);
       SDValue VPermMask = getConstVector(Mask, VPermMaskVT, DAG, DL, true);
@@ -25960,6 +25969,39 @@ static bool combineX86ShuffleChain(ArrayRef<SDValue> Inputs, SDValue Root,
       Res = DAG.getBitcast(MaskVT, V1);
       DCI.AddToWorklist(Res.getNode());
       Res = DAG.getNode(X86ISD::VPERMV, DL, MaskVT, VPermMask, Res);
+      DCI.AddToWorklist(Res.getNode());
+      DCI.CombineTo(Root.getNode(), DAG.getBitcast(RootVT, Res),
+                    /*AddTo*/ true);
+      return true;
+    }
+
+    // Lower a unary+zero lane-crossing shuffle as VPERMV3 with a zero
+    // vector as the second source.
+    if (UnaryShuffle && (Depth >= 3 || HasVariableMask) &&
+        ((Subtarget.hasAVX512() &&
+          (MaskVT == MVT::v8f64 || MaskVT == MVT::v8i64 ||
+           MaskVT == MVT::v16f32 || MaskVT == MVT::v16i32)) ||
+         (Subtarget.hasVLX() &&
+          (MaskVT == MVT::v4f64 || MaskVT == MVT::v4i64 ||
+           MaskVT == MVT::v8f32 || MaskVT == MVT::v8i32)) ||
+         (Subtarget.hasBWI() && MaskVT == MVT::v32i16) ||
+         (Subtarget.hasBWI() && Subtarget.hasVLX() && MaskVT == MVT::v16i16) ||
+         (Subtarget.hasVBMI() && MaskVT == MVT::v64i8) ||
+         (Subtarget.hasVBMI() && Subtarget.hasVLX() && MaskVT == MVT::v32i8))) {
+      // Adjust shuffle mask - replace SM_SentinelZero with second source index.
+      for (unsigned i = 0; i != NumMaskElts; ++i)
+        if (Mask[i] == SM_SentinelZero)
+          Mask[i] = NumMaskElts + i;
+
+      MVT VPermMaskSVT = MVT::getIntegerVT(MaskEltSizeInBits);
+      MVT VPermMaskVT = MVT::getVectorVT(VPermMaskSVT, NumMaskElts);
+      SDValue VPermMask = getConstVector(Mask, VPermMaskVT, DAG, DL, true);
+      DCI.AddToWorklist(VPermMask.getNode());
+      Res = DAG.getBitcast(MaskVT, V1);
+      DCI.AddToWorklist(Res.getNode());
+      SDValue Zero = getZeroVector(MaskVT, Subtarget, DAG, DL);
+      DCI.AddToWorklist(Zero.getNode());
+      Res = DAG.getNode(X86ISD::VPERMV3, DL, MaskVT, Res, VPermMask, Zero);
       DCI.AddToWorklist(Res.getNode());
       DCI.CombineTo(Root.getNode(), DAG.getBitcast(RootVT, Res),
                     /*AddTo*/ true);
@@ -25975,7 +26017,9 @@ static bool combineX86ShuffleChain(ArrayRef<SDValue> Inputs, SDValue Root,
           (MaskVT == MVT::v4f64 || MaskVT == MVT::v4i64 ||
            MaskVT == MVT::v8f32 || MaskVT == MVT::v8i32)) ||
          (Subtarget.hasBWI() && MaskVT == MVT::v32i16) ||
-         (Subtarget.hasBWI() && Subtarget.hasVLX() && MaskVT == MVT::v16i16))) {
+         (Subtarget.hasBWI() && Subtarget.hasVLX() && MaskVT == MVT::v16i16) ||
+         (Subtarget.hasVBMI() && MaskVT == MVT::v64i8) ||
+         (Subtarget.hasVBMI() && Subtarget.hasVLX() && MaskVT == MVT::v32i8))) {
       MVT VPermMaskSVT = MVT::getIntegerVT(MaskEltSizeInBits);
       MVT VPermMaskVT = MVT::getVectorVT(VPermMaskSVT, NumMaskElts);
       SDValue VPermMask = getConstVector(Mask, VPermMaskVT, DAG, DL, true);
@@ -27728,6 +27772,58 @@ static SDValue combineSelectOfTwoConstants(SDNode *N, SelectionDAG &DAG) {
   return SDValue();
 }
 
+// If this is a bitcasted op that can be represented as another type, push the
+// the bitcast to the inputs. This allows more opportunities for pattern
+// matching masked instructions. This is called when we know that the operation
+// is used as one of the inputs of a vselect.
+static bool combineBitcastForMaskedOp(SDValue OrigOp, SelectionDAG &DAG,
+                                      TargetLowering::DAGCombinerInfo &DCI) {
+  // Make sure we have a bitcast.
+  if (OrigOp.getOpcode() != ISD::BITCAST)
+    return false;
+
+  SDValue Op = OrigOp.getOperand(0);
+
+  // If the operation is used by anything other than the bitcast, we shouldn't
+  // do this combine as that would replicate the operation.
+  if (!Op.hasOneUse())
+    return false;
+
+  MVT VT = OrigOp.getSimpleValueType();
+  MVT EltVT = VT.getVectorElementType();
+  SDLoc DL(Op.getNode());
+
+  switch (Op.getOpcode()) {
+  case X86ISD::PALIGNR:
+    // PALIGNR can be converted to VALIGND/Q for 128-bit vectors.
+    if (!VT.is128BitVector())
+      return false;
+    LLVM_FALLTHROUGH;
+  case X86ISD::VALIGN: {
+    if (EltVT != MVT::i32 && EltVT != MVT::i64)
+      return false;
+    uint64_t Imm = cast<ConstantSDNode>(Op.getOperand(2))->getZExtValue();
+    MVT OpEltVT = Op.getSimpleValueType().getVectorElementType();
+    unsigned ShiftAmt = Imm * OpEltVT.getSizeInBits();
+    unsigned EltSize = EltVT.getSizeInBits();
+    // Make sure we can represent the same shift with the new VT.
+    if ((ShiftAmt % EltSize) != 0)
+      return false;
+    Imm = ShiftAmt / EltSize;
+    SDValue Op0 = DAG.getBitcast(VT, Op.getOperand(0));
+    DCI.AddToWorklist(Op0.getNode());
+    SDValue Op1 = DAG.getBitcast(VT, Op.getOperand(1));
+    DCI.AddToWorklist(Op1.getNode());
+    DCI.CombineTo(OrigOp.getNode(),
+                  DAG.getNode(X86ISD::VALIGN, DL, VT, Op0, Op1,
+                              DAG.getConstant(Imm, DL, MVT::i8)));
+    return true;
+  }
+  }
+
+  return false;
+}
+
 /// Do target-specific dag combines on SELECT and VSELECT nodes.
 static SDValue combineSelect(SDNode *N, SelectionDAG &DAG,
                              TargetLowering::DAGCombinerInfo &DCI,
@@ -28087,6 +28183,17 @@ static SDValue combineSelect(SDNode *N, SelectionDAG &DAG,
                       TLO.New, N->getOperand(1), N->getOperand(2)));
       return SDValue();
     }
+  }
+
+  // Look for vselects with LHS/RHS being bitcasted from an operation that
+  // can be executed on another type. Push the bitcast to the inputs of
+  // the operation. This exposes opportunities for using masking instructions.
+  if (N->getOpcode() == ISD::VSELECT && !DCI.isBeforeLegalizeOps() &&
+      CondVT.getVectorElementType() == MVT::i1) {
+    if (combineBitcastForMaskedOp(LHS, DAG, DCI))
+      return SDValue(N, 0);
+    if (combineBitcastForMaskedOp(RHS, DAG, DCI))
+      return SDValue(N, 0);
   }
 
   return SDValue();
@@ -30976,22 +31083,20 @@ static SDValue combineVectorTruncation(SDNode *N, SelectionDAG &DAG,
     return SDValue();
 }
 
-/// This function transforms vector truncation of comparison results from
+/// This function transforms vector truncation of 'all or none' bits values.
 /// vXi16/vXi32/vXi64 to vXi8/vXi16/vXi32 into X86ISD::PACKSS operations.
-static SDValue combineVectorCompareTruncation(SDNode *N, SDLoc &DL,
-                                              SelectionDAG &DAG,
-                                              const X86Subtarget &Subtarget) {
-  // AVX512 has fast truncate.
-  if (Subtarget.hasAVX512())
+static SDValue combineVectorSignBitsTruncation(SDNode *N, SDLoc &DL,
+                                               SelectionDAG &DAG,
+                                               const X86Subtarget &Subtarget) {
+  // Requires SSE2 but AVX512 has fast truncate.
+  if (!Subtarget.hasSSE2() || Subtarget.hasAVX512())
     return SDValue();
 
   if (!N->getValueType(0).isVector() || !N->getValueType(0).isSimple())
     return SDValue();
 
-  // TODO: we should be able to support sources other than compares as long
-  // as we are saturating+packing zero/all bits only.
   SDValue In = N->getOperand(0);
-  if (In.getOpcode() != ISD::SETCC || !In.getValueType().isSimple())
+  if (!In.getValueType().isSimple())
     return SDValue();
 
   MVT VT = N->getValueType(0).getSimpleVT();
@@ -31000,9 +31105,11 @@ static SDValue combineVectorCompareTruncation(SDNode *N, SDLoc &DL,
   MVT InVT = In.getValueType().getSimpleVT();
   MVT InSVT = InVT.getScalarType();
 
-  assert(DAG.getTargetLoweringInfo().getBooleanContents(InVT) ==
-             TargetLoweringBase::ZeroOrNegativeOneBooleanContent &&
-         "Expected comparison result to be zero/all bits");
+  // Use PACKSS if the input is a splatted sign bit.
+  // e.g. Comparison result, sext_in_reg, etc.
+  unsigned NumSignBits = DAG.ComputeNumSignBits(In);
+  if (NumSignBits != InSVT.getSizeInBits())
+    return SDValue();
 
   // Check we have a truncation suited for PACKSS.
   if (!VT.is128BitVector() && !VT.is256BitVector())
@@ -31033,8 +31140,8 @@ static SDValue combineTruncate(SDNode *N, SelectionDAG &DAG,
       return DAG.getNode(X86ISD::MMX_MOVD2W, DL, MVT::i32, BCSrc);
   }
 
-  // Try to truncate vector comparison results with PACKSS.
-  if (SDValue V = combineVectorCompareTruncation(N, DL, DAG, Subtarget))
+  // Try to truncate extended sign bits with PACKSS.
+  if (SDValue V = combineVectorSignBitsTruncation(N, DL, DAG, Subtarget))
     return V;
 
   return combineVectorTruncation(N, DAG, Subtarget);

@@ -1153,6 +1153,12 @@ public:
     return false;
   }
 
+  /// Returns true if a cast from SrcAS to DestAS is "cheap", such that e.g. we
+  /// are happy to sink it into basic blocks.
+  virtual bool isCheapAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const {
+    return isNoopAddrSpaceCast(SrcAS, DestAS);
+  }
+
   /// Return true if the pointer arguments to CI should be aligned by aligning
   /// the object whose address is being passed. If so then MinSize is set to the
   /// minimum size the object must be to be aligned and PrefAlign is set to the
@@ -2105,7 +2111,7 @@ protected:
   virtual bool isExtFreeImpl(const Instruction *I) const { return false; }
 
   /// Depth that GatherAllAliases should should continue looking for chain
-  /// dependencies when trying to find a more preferrable chain. As an
+  /// dependencies when trying to find a more preferable chain. As an
   /// approximation, this should be more than the number of consecutive stores
   /// expected to be merged.
   unsigned GatherAllAliasesMaxDepth;
