@@ -74,6 +74,14 @@ static bool isInSmallSection(uint64_t Size) {
   return Size > 0 && Size <= SSThreshold;
 }
 
+/// Return true if this constant should be placed into small data/bss
+/// section. This method does all the work, directly influencing section
+/// kind.
+bool PPCEmbeddedTargetObjectFile::
+isConstantInSmallSectionKind(const DataLayout &DL, const Constant *C) const {
+  return isInSmallSection(DL.getTypeAllocSize(C->getType()));
+}
+
 /// Return true if this global address should be placed into small data/bss
 /// section. This method does all the work, directly influencing section
 /// kind.
@@ -115,4 +123,14 @@ MCSection *PPCEmbeddedTargetObjectFile::SelectSectionForGlobal(
     return SmallDataSection;
 
   return TargetLoweringObjectFileELF::SelectSectionForGlobal(GO, Kind, TM);
+}
+
+MCSection *PPCEmbeddedTargetObjectFile::getSectionForConstant(
+    const DataLayout &DL, SectionKind Kind,
+    const Constant *C, unsigned &Align) const {
+  // Handle Small Section classification here.
+  if (Kind.isSmallReadOnly())
+    return SmallData2Section;
+
+  return TargetLoweringObjectFileELF::getSectionForConstant(DL, Kind, C, Align);
 }

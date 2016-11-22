@@ -255,6 +255,17 @@ SectionKind TargetLoweringObjectFile::getKindForGlobal(const GlobalObject *GO,
   return GetData();
 }
 
+/// Determine if constant is allocated in a subtarget small data
+/// SectionKind.
+bool TargetLoweringObjectFile::isConstantInSmallSection(const DataLayout &DL,
+                                                        const Constant *C,
+                                                        const TargetMachine &TM) {
+  const TargetLoweringObjectFile *TLOF = TM.getObjFileLowering();
+  assert(TLOF != nullptr &&
+         "No TargetLoweringObjectFile for small section classification");
+  return TLOF->isConstantInSmallSectionKind(DL, C);
+}
+
 /// Determine if global variable is allocated in a subtarget small data
 /// SectionKind.
 bool TargetLoweringObjectFile::isGlobalInSmallSection(const GlobalObject *GO,

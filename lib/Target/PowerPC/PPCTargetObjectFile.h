@@ -36,6 +36,9 @@ namespace llvm {
     MCSection *SmallData2Section = nullptr;
     MCSection *SmallBssSection = nullptr;
 
+    bool isConstantInSmallSectionKind(const DataLayout &DL,
+                                      const Constant *C) const override;
+
     bool isGlobalInSmallSectionKind(const GlobalObject *GO,
                                     const TargetMachine &TM) const override;
 
@@ -45,6 +48,11 @@ namespace llvm {
 
     MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
                                       const TargetMachine &TM) const override;
+
+    MCSection *getSectionForConstant(const DataLayout &DL,
+                                     SectionKind Kind,
+                                     const Constant *C,
+                                     unsigned &Align) const override;
   };
 
 }  // end namespace llvm

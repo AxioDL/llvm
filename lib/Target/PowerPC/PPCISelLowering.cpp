@@ -1920,6 +1920,21 @@ bool PPCTargetLowering::SelectAddressRegImm(SDValue N, SDValue &Disp,
                                                 PPCII::MO_SDA_LO);
             }
           }
+        } else if (ConstantPoolSDNode *CSDN =
+                   dyn_cast<ConstantPoolSDNode>(Disp.getNode())) {
+          const Constant *C = CSDN->getConstVal();
+          if (TargetLoweringObjectFile::isConstantInSmallSection(
+              DAG.getDataLayout(), C, getTargetMachine())) {
+            // This register selection is only relevant for ASM printing.
+            // MO_SDA_LO will ensure encoded register is R0, and the linker
+            // selects the actual base register during relocation.
+            Base = DAG.getRegister(PPC::R2, MVT::i32);
+            Disp = DAG.getTargetConstantPool(C,
+                                             Disp.getValueType(),
+                                             CSDN->getAlignment(),
+                                             CSDN->getOffset(),
+                                             PPCII::MO_SDA_LO);
+          }
         }
       }
 

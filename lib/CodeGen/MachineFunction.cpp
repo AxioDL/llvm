@@ -41,6 +41,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetFrameLowering.h"
 #include "llvm/Target/TargetLowering.h"
+#include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 using namespace llvm;
@@ -890,9 +891,15 @@ bool MachineConstantPoolEntry::needsRelocation() const {
 }
 
 SectionKind
-MachineConstantPoolEntry::getSectionKind(const DataLayout *DL) const {
+MachineConstantPoolEntry::getSectionKind(const DataLayout *DL,
+                                         const TargetMachine &TM) const {
   if (needsRelocation())
     return SectionKind::getReadOnlyWithRel();
+
+  if (!isMachineConstantPoolEntry() &&
+      TargetLoweringObjectFile::isConstantInSmallSection(*DL, Val.ConstVal, TM))
+      return SectionKind::getSmallReadOnly();
+
   switch (DL->getTypeAllocSize(getType())) {
   case 4:
     return SectionKind::getMergeableConst4();

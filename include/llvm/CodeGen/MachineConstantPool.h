@@ -105,7 +105,8 @@ public:
   /// codegen to a relocatable entry, it should say so.
   bool needsRelocation() const;
 
-  SectionKind getSectionKind(const DataLayout *DL) const;
+  SectionKind getSectionKind(const DataLayout *DL,
+                             const TargetMachine &TM) const;
 };
 
 /// The MachineConstantPool class keeps track of constants referenced by a
