@@ -81,8 +81,8 @@ MCSection *LanaiTargetObjectFile::SelectSectionForGlobal(
 }
 
 /// Return true if this constant should be placed into small data section.
-bool LanaiTargetObjectFile::isConstantInSmallSection(const DataLayout &DL,
-                                                     const Constant *CN) const {
+bool LanaiTargetObjectFile::isConstantInSmallSectionKind(const DataLayout &DL,
+                                                         const Constant *CN) const {
   return isInSmallSection(DL.getTypeAllocSize(CN->getType()));
 }
 
@@ -90,7 +90,7 @@ MCSection *LanaiTargetObjectFile::getSectionForConstant(const DataLayout &DL,
                                                         SectionKind Kind,
                                                         const Constant *C,
                                                         unsigned &Align) const {
-  if (isConstantInSmallSection(DL, C))
+  if (Kind.isSmallReadOnly())
     return SmallDataSection;
 
   // Otherwise, we work the same as ELF.

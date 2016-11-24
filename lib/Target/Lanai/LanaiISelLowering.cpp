@@ -1127,14 +1127,12 @@ SDValue LanaiTargetLowering::LowerConstantPool(SDValue Op,
   SDLoc DL(Op);
   ConstantPoolSDNode *N = cast<ConstantPoolSDNode>(Op);
   const Constant *C = N->getConstVal();
-  const LanaiTargetObjectFile *TLOF =
-      static_cast<const LanaiTargetObjectFile *>(
-          getTargetMachine().getObjFileLowering());
 
   // If the code model is small or constant will be placed in the small section,
   // then assume address will fit in 21-bits.
   if (getTargetMachine().getCodeModel() == CodeModel::Small ||
-      TLOF->isConstantInSmallSection(DAG.getDataLayout(), C)) {
+      TargetLoweringObjectFile::isConstantInSmallSection(
+        DAG.getDataLayout(), C, getTargetMachine())) {
     SDValue Small = DAG.getTargetConstantPool(
         C, MVT::i32, N->getAlignment(), N->getOffset(), LanaiII::MO_NO_FLAG);
     return DAG.getNode(ISD::OR, DL, MVT::i32,

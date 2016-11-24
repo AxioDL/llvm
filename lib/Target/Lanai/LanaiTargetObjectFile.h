@@ -18,6 +18,11 @@ class LanaiTargetObjectFile : public TargetLoweringObjectFileELF {
   MCSection *SmallDataSection;
   MCSection *SmallBSSSection;
 
+  /// Return true if this constant should be placed into small data section.
+  bool isConstantInSmallSectionKind(const DataLayout &DL,
+                                    const Constant *CN) const override;
+
+  /// Return true if this global should be placed into small data section.
   bool isGlobalInSmallSectionKind(const GlobalObject *GO,
                                   const TargetMachine &TM) const override;
 
@@ -26,9 +31,6 @@ public:
 
   MCSection *SelectSectionForGlobal(const GlobalObject *GO, SectionKind Kind,
                                     const TargetMachine &TM) const override;
-
-  /// Return true if this constant should be placed into small data section.
-  bool isConstantInSmallSection(const DataLayout &DL, const Constant *CN) const;
 
   MCSection *getSectionForConstant(const DataLayout &DL, SectionKind Kind,
                                    const Constant *C,

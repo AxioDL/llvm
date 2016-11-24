@@ -107,9 +107,9 @@ MCSection *MipsTargetObjectFile::SelectSectionForGlobal(
 }
 
 /// Return true if this constant should be placed into small data section.
-bool MipsTargetObjectFile::isConstantInSmallSection(
-    const DataLayout &DL, const Constant *CN, const TargetMachine &TM) const {
-  return (static_cast<const MipsTargetMachine &>(TM)
+bool MipsTargetObjectFile::isConstantInSmallSectionKind(
+    const DataLayout &DL, const Constant *CN) const {
+  return (static_cast<const MipsTargetMachine &>(*TM)
               .getSubtargetImpl()
               ->useSmallSection() &&
           LocalSData && IsInSmallSection(DL.getTypeAllocSize(CN->getType())));
@@ -120,7 +120,7 @@ MCSection *MipsTargetObjectFile::getSectionForConstant(const DataLayout &DL,
                                                        SectionKind Kind,
                                                        const Constant *C,
                                                        unsigned &Align) const {
-  if (isConstantInSmallSection(DL, C, *TM))
+  if (Kind.isSmallReadOnly())
     return SmallDataSection;
 
   // Otherwise, we work the same as ELF.

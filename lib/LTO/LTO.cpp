@@ -586,6 +586,7 @@ public:
   virtual Error wait() = 0;
 };
 
+namespace {
 class InProcessThinBackend : public ThinBackendProc {
   ThreadPool BackendThreadPool;
   AddStreamFn AddStream;
@@ -685,6 +686,7 @@ public:
       return Error::success();
   }
 };
+} // end anonymous namespace
 
 ThinBackend lto::createInProcessThinBackend(unsigned ParallelismLevel) {
   return [=](Config &Conf, ModuleSummaryIndex &CombinedIndex,
@@ -716,6 +718,7 @@ std::string lto::getThinLTOOutputFile(const std::string &Path,
   return NewPath.str();
 }
 
+namespace {
 class WriteIndexesThinBackend : public ThinBackendProc {
   std::string OldPrefix, NewPrefix;
   bool ShouldEmitImportsFiles;
@@ -773,6 +776,7 @@ public:
 
   Error wait() override { return Error::success(); }
 };
+} // end anonymous namespace
 
 ThinBackend lto::createWriteIndexesThinBackend(std::string OldPrefix,
                                                std::string NewPrefix,
