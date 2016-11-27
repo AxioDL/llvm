@@ -609,7 +609,8 @@ public:
   bool isEABI() const { return getEnvironment() == Triple::EABI; }
 
   /// Tests whether the target supports comdat
-  bool supportsCOMDAT() const { return !isOSBinFormatMachO(); }
+  bool supportsCOMDAT() const { return !isOSBinFormatMachO() &&
+                                       getOS() != Triple::Hanafuda; }
 
   /// @}
   /// @name Mutators
