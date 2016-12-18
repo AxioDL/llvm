@@ -21,7 +21,7 @@ namespace llvm {
 /// in order to explain the predicates below.
 ///
 class SectionKind {
-  enum Kind {
+  enum Kind : uint8_t {
     /// Metadata - Debug info sections or other metadata.
     Metadata,
 
@@ -135,7 +135,7 @@ class SectionKind {
        SmallCommon = (Common | SmallKind)
   } K : 8;
 
-  int UnderlyingKind() const { return K & SmallKindMask; }
+  uint8_t UnderlyingKind() const { return K & SmallKindMask; }
 
 public:
 
@@ -180,7 +180,7 @@ public:
   }
 
   bool isBSS() const {
-    int UK = UnderlyingKind();
+    uint8_t UK = UnderlyingKind();
     return UK == BSS || UK == BSSLocal || UK == BSSExtern;
   }
   bool isBSSLocal() const { return UnderlyingKind() == BSSLocal; }
