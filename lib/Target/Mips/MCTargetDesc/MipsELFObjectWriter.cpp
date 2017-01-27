@@ -419,6 +419,13 @@ unsigned MipsELFObjectWriter::getRelocType(MCContext &Ctx,
 /// always match using the expressions from the source.
 void MipsELFObjectWriter::sortRelocs(const MCAssembler &Asm,
                                      std::vector<ELFRelocationEntry> &Relocs) {
+
+  // We do not need to sort the relocation table for RELA relocations which
+  // N32/N64 uses as the relocation addend contains the value we require,
+  // rather than it being split across a pair of relocations.
+  if (hasRelocationAddend())
+    return;
+
   if (Relocs.size() < 2)
     return;
 
@@ -517,6 +524,8 @@ bool MipsELFObjectWriter::needsRelocateWithSymbol(const MCSymbol &Sym,
   case ELF::R_MIPS_GOT16:
   case ELF::R_MIPS16_GOT16:
   case ELF::R_MICROMIPS_GOT16:
+  case ELF::R_MIPS_HIGHER:
+  case ELF::R_MIPS_HIGHEST:
   case ELF::R_MIPS_HI16:
   case ELF::R_MIPS16_HI16:
   case ELF::R_MICROMIPS_HI16:
@@ -560,8 +569,6 @@ bool MipsELFObjectWriter::needsRelocateWithSymbol(const MCSymbol &Sym,
   case ELF::R_MIPS_INSERT_A:
   case ELF::R_MIPS_INSERT_B:
   case ELF::R_MIPS_DELETE:
-  case ELF::R_MIPS_HIGHER:
-  case ELF::R_MIPS_HIGHEST:
   case ELF::R_MIPS_CALL_HI16:
   case ELF::R_MIPS_CALL_LO16:
   case ELF::R_MIPS_SCN_DISP:

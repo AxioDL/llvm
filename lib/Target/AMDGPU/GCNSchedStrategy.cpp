@@ -103,7 +103,7 @@ void GCNMaxOccupancySchedStrategy::initCandidate(SchedCandidate &Cand, SUnit *SU
 
   if (ShouldTrackSGPRs && NewSGPRPressure >= SGPRExcessLimit) {
     Cand.RPDelta.Excess = PressureChange(SRI->getSGPRPressureSet());
-    Cand.RPDelta.Excess.setUnitInc(NewSGPRPressure = SGPRExcessLimit);
+    Cand.RPDelta.Excess.setUnitInc(NewSGPRPressure - SGPRExcessLimit);
   }
 
   // Register pressure is considered 'CRITICAL' if it is approaching a value
@@ -144,7 +144,7 @@ void GCNMaxOccupancySchedStrategy::pickNodeFromQueue(SchedBoundary &Zone,
   unsigned VGPRExcessLimit =
       Context->RegClassInfo->getNumAllocatableRegs(&AMDGPU::VGPR_32RegClass);
   unsigned MaxWaves = getMaxWaves(SGPRPressure, VGPRPressure, DAG->MF);
-  unsigned SGPRCriticalLimit = SRI->getMaxNumSGPRs(ST, MaxWaves);
+  unsigned SGPRCriticalLimit = SRI->getMaxNumSGPRs(ST, MaxWaves, true);
   unsigned VGPRCriticalLimit = SRI->getMaxNumVGPRs(MaxWaves);
 
   ReadyQueue &Q = Zone.Available;

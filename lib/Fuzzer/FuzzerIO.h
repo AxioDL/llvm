@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 // IO interface.
 //===----------------------------------------------------------------------===//
+
 #ifndef LLVM_FUZZER_IO_H
 #define LLVM_FUZZER_IO_H
 
@@ -15,14 +16,10 @@
 
 namespace fuzzer {
 
-bool IsFile(const std::string &Path);
-
 long GetEpoch(const std::string &Path);
 
 Unit FileToVector(const std::string &Path, size_t MaxSize = 0,
                   bool ExitOnError = true);
-
-void DeleteFile(const std::string &Path);
 
 std::string FileToString(const std::string &Path);
 
@@ -37,11 +34,41 @@ void ReadDirToVectorOfUnits(const char *Path, std::vector<Unit> *V,
 std::string DirPlusFile(const std::string &DirPath,
                         const std::string &FileName);
 
+// Returns the name of the dir, similar to the 'dirname' utility.
+std::string DirName(const std::string &FileName);
+
+// Returns path to a TmpDir.
+std::string TmpDir();
+
+bool IsInterestingCoverageFile(const std::string &FileName);
+
 void DupAndCloseStderr();
 
 void CloseStdout();
 
 void Printf(const char *Fmt, ...);
 
+// Print using raw syscalls, useful when printing at early init stages.
+void RawPrint(const char *Str);
+
+// Platform specific functions:
+bool IsFile(const std::string &Path);
+
+void ListFilesInDirRecursive(const std::string &Dir, long *Epoch,
+                             std::vector<std::string> *V, bool TopDir);
+
+char GetSeparator();
+
+FILE* OpenFile(int Fd, const char *Mode);
+
+int CloseFile(int Fd);
+
+int DuplicateFile(int Fd);
+
+void RemoveFile(const std::string &Path);
+
+void DiscardOutput(int Fd);
+
 }  // namespace fuzzer
+
 #endif  // LLVM_FUZZER_IO_H

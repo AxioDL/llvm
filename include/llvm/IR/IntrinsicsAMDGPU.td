@@ -100,9 +100,20 @@ def int_amdgcn_dispatch_id :
   GCCBuiltin<"__builtin_amdgcn_dispatch_id">,
   Intrinsic<[llvm_i64_ty], [], [IntrNoMem]>;
 
+def int_amdgcn_implicit_buffer_ptr :
+  GCCBuiltin<"__builtin_amdgcn_implicit_buffer_ptr">,
+  Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 2>], [], [IntrNoMem]>;
+
 //===----------------------------------------------------------------------===//
 // Instruction Intrinsics
 //===----------------------------------------------------------------------===//
+
+// The first parameter is s_sendmsg immediate (i16),
+// the second one is copied to m0
+def int_amdgcn_s_sendmsg : GCCBuiltin<"__builtin_amdgcn_s_sendmsg">,
+  Intrinsic <[], [llvm_i32_ty, llvm_i32_ty], []>;
+def int_amdgcn_s_sendmsghalt : GCCBuiltin<"__builtin_amdgcn_s_sendmsghalt">,
+  Intrinsic <[], [llvm_i32_ty, llvm_i32_ty], []>;
 
 def int_amdgcn_s_barrier : GCCBuiltin<"__builtin_amdgcn_s_barrier">,
   Intrinsic<[], [], [IntrConvergent]>;
@@ -440,6 +451,32 @@ def int_amdgcn_buffer_atomic_cmpswap : Intrinsic<
    llvm_i1_ty],       // slc(imm)
   []>;
 
+// Uses that do not set the done bit should set IntrWriteMem on the
+// call site.
+def int_amdgcn_exp : Intrinsic <[], [
+  llvm_i32_ty,       // tgt,
+  llvm_i32_ty,       // en
+  llvm_any_ty,       // src0 (f32 or i32)
+  LLVMMatchType<0>,  // src1
+  LLVMMatchType<0>,  // src2
+  LLVMMatchType<0>,  // src3
+  llvm_i1_ty,        // done
+  llvm_i1_ty         // vm
+  ],
+  []
+>;
+
+// exp with compr bit set.
+def int_amdgcn_exp_compr : Intrinsic <[], [
+  llvm_i32_ty,       // tgt,
+  llvm_i32_ty,       // en
+  llvm_anyvector_ty, // src0 (v2f16 or v2i16)
+  LLVMMatchType<0>,  // src1
+  llvm_i1_ty,        // done
+  llvm_i1_ty],       // vm
+  []
+>;
+
 def int_amdgcn_buffer_wbinvl1_sc :
   GCCBuiltin<"__builtin_amdgcn_buffer_wbinvl1_sc">,
   Intrinsic<[], [], []>;
@@ -474,6 +511,14 @@ def int_amdgcn_s_decperflevel :
 def int_amdgcn_s_getreg :
   GCCBuiltin<"__builtin_amdgcn_s_getreg">,
   Intrinsic<[llvm_i32_ty], [llvm_i32_ty], [IntrReadMem]>;
+
+// __builtin_amdgcn_interp_mov <param>, <attr_chan>, <attr>, <m0>
+// param values: 0 = P10, 1 = P20, 2 = P0
+def int_amdgcn_interp_mov :
+  GCCBuiltin<"__builtin_amdgcn_interp_mov">,
+  Intrinsic<[llvm_float_ty],
+            [llvm_i32_ty, llvm_i32_ty, llvm_i32_ty, llvm_i32_ty],
+            [IntrNoMem]>;
 
 // __builtin_amdgcn_interp_p1 <i>, <attr_chan>, <attr>, <m0>
 def int_amdgcn_interp_p1 :

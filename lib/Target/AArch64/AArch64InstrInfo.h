@@ -87,6 +87,8 @@ public:
   /// Return true if this is an unscaled load/store.
   bool isUnscaledLdSt(MachineInstr &MI) const;
 
+  bool isTailCall(const MachineInstr &Inst) const override;
+
   static bool isPairableLdStInst(const MachineInstr &MI) {
     switch (MI.getOpcode()) {
     default:
@@ -161,6 +163,10 @@ public:
                             MachineBasicBlock::iterator MBBI, unsigned DestReg,
                             int FrameIndex, const TargetRegisterClass *RC,
                             const TargetRegisterInfo *TRI) const override;
+
+  // This tells target independent code that it is okay to pass instructions
+  // with subreg operands to foldMemoryOperandImpl.
+  bool isSubregFoldable() const override { return true; }
 
   using TargetInstrInfo::foldMemoryOperandImpl;
   MachineInstr *
