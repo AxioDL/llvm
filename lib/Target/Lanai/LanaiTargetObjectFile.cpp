@@ -50,7 +50,7 @@ static bool isInSmallSection(uint64_t Size) {
 // section. This method does all the work, directly influencing section
 // kind.
 bool LanaiTargetObjectFile::isGlobalInSmallSectionKind(
-    const GlobalObject *GO, const TargetMachine & /*TM*/) const {
+    const GlobalObject *GO, const TargetMachine &TM) const {
   // Only global variables, not functions.
   const auto *GVA = dyn_cast<GlobalVariable>(GO);
   if (!GVA)

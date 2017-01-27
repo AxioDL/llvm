@@ -21,7 +21,7 @@ namespace llvm {
 /// in order to explain the predicates below.
 ///
 class SectionKind {
-  enum Kind {
+  enum Kind : uint8_t {
     /// Metadata - Debug info sections or other metadata.
     Metadata,
 
